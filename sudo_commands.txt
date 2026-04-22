@@ -7,3 +7,4 @@ sudo apt install alsa-utils portaudio19-dev -y
 pip3 install pyaudio numpy
 sudo apt install python3-smbus i2c-tools -y
 pip3 install opencv-python requests
+pip3 install -r requirements.txt
