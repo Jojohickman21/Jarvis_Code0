@@ -1,0 +1,30 @@
+# JARVIS Voice Assistant — Dependencies
+# Install with:  pip3 install -r requirements.txt
+
+# Wake word detection (local, open source — no API key needed)
+openwakeword
+
+# Audio capture
+pyaudio
+
+# Speech-to-text (OpenAI Whisper API)
+openai>=1.0
+
+# Text-to-speech (ElevenLabs emotive voice)
+elevenlabs>=1.0
+
+# API key management
+python-dotenv
+
+# Audio playback + general utils
+pygame
+numpy
+
+# Web dashboard
+flask
+
+# Security mode (face detection)
+opencv-python
+
+# Servo control (Raspberry Pi only — will fail on non-Pi machines)
+# adafruit-circuitpython-servokit

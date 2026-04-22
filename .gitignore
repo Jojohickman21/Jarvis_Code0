@@ -1,0 +1,17 @@
+# API keys — never commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Audio temp files
+*.wav
+*.mp3
+
+# OS files
+.DS_Store
+Thumbs.db
