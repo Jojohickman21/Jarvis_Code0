@@ -105,6 +105,9 @@ class VoiceAssistant:
             self.google = None
 
         # ── Audio ─────────────────────────────────────────────
+        os.environ["SDL_AUDIODRIVER"] = "alsa"
+        os.environ["AUDIODEV"] = "hw:2,0"
+
         pygame.mixer.init()
         self._pa = pyaudio.PyAudio()
 
@@ -193,11 +196,23 @@ class VoiceAssistant:
         Returns path to a temporary .wav file, or None if nothing was captured.
         """
         chunk_size = 1024
+        # 🔥 Select correct microphone device
+        device_index = None
+        for i in range(self._pa.get_device_count()):
+            info = self._pa.get_device_info_by_index(i)
+            name = info.get("name", "").lower()
+
+            if "logi" in name or "usb" in name:
+                print(f"[AUDIO] Using mic: {info['name']} (index {i})")
+                device_index = i
+                break
+
         stream = self._pa.open(
             rate=SAMPLE_RATE,
             channels=1,
             format=pyaudio.paInt16,
             input=True,
+            input_device_index=device_index,  # 🔥 THIS IS THE FIX
             frames_per_buffer=chunk_size,
         )
 

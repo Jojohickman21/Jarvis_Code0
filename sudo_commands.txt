@@ -1,5 +1,6 @@
 sudo apt update
 sudo apt install git -y
+sudo apt install python3-venv -y
 sudo apt install python3 python3-pip -y
 pip3 install adafruit-circuitpython-servokit
 sudo raspi-config
@@ -10,6 +11,7 @@ sudo apt install python3-smbus i2c-tools -y
 pip3 install opencv-python requests
 pip3 install -r requirements.txt
 pip3 install google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
 
 
 

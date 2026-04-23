@@ -50,3 +50,13 @@ SAMPLE_RATE = 16000               # 16kHz — required by Porcupine & Whisper
 OPENAI_MODEL = "gpt-4o-mini"     # fast, cheap, great for conversation
 DEFAULT_PERSONALITY = "happy_excited"
 TEMP_AUDIO_PATH = "/tmp/jarvis_recording.wav"
+
+# AUDIO / CAMERA CONFIG
+# Speaker (USB audio device)
+AUDIO_OUTPUT_DEVICE = "plughw:2,0"
+
+# Microphone (use webcam mic — better quality usually)
+AUDIO_INPUT_DEVICE = "plughw:3,0"
+
+# Webcam
+CAMERA_INDEX = 0
