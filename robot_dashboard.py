@@ -332,7 +332,8 @@ def create_app(
             else:
                 set_status(f"Unknown personality: {name}")
         return redirect(url_for("index"))
-
+   
+    print(f"[DEBUG] Button pressed: {name}")
     @app.route("/action/<name>", methods=["POST"])
     def action(name):
         valid = {
@@ -344,6 +345,7 @@ def create_app(
             return redirect(url_for("index"))
 
         def _run():
+            print(f"[DEBUG] Running action: {name}")
             with action_lock:
                 if sentry and sentry.is_armed():
                     set_status("Disarm security first")
