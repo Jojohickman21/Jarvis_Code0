@@ -113,8 +113,8 @@ class VoiceAssistant:
 
         # ── openWakeWord (fully open source, no API key needed) ──
         # Auto-downloads the model from HuggingFace on first run.
-        self._oww = OWWModel(wakeword_models=[WAKE_WORD])
-        self._oww_threshold = 0.5  # tune up (fewer false positives) or down
+        self._oww = None
+        #self._oww_threshold = 0.5  # tune up (fewer false positives) or down
 
         # Thread-safe personality switching (dashboard can call set_personality)
         self._lock = threading.Lock()
@@ -522,7 +522,8 @@ class VoiceAssistant:
         try:
             while True:
                 # 1. Wait for wake word
-                self.listen_for_wake_word()
+                #self.listen_for_wake_word()
+                print("[DEBUG] skipping wake word")
 
                 # 2. Record user speech
                 audio_path = self.record_speech()
