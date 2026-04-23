@@ -26,7 +26,9 @@ import pygame
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# 🔥 FORCE AUDIO DEVICE (must be at top level)
 os.environ["SDL_AUDIODRIVER"] = "alsa"
+os.environ["AUDIODEV"] = "hw:2,0"
 
 from config import (
     DEFAULT_PERSONALITY,
@@ -105,13 +107,6 @@ class VoiceAssistant:
         except Exception as exc:
             print(f"[WARN] GoogleActions unavailable: {exc}")
             self.google = None
-
-        # ── Audio ─────────────────────────────────────────────
-        os.environ["AUDIODEV"] = "hw:2,0"
-
-        import os
-
-        os.environ["AUDIODEV"] = "hw:2,0"
 
         pygame.mixer.init()
         self._pa = pyaudio.PyAudio()
