@@ -108,6 +108,12 @@ class VoiceAssistant:
         os.environ["SDL_AUDIODRIVER"] = "alsa"
         os.environ["AUDIODEV"] = "hw:2,0"
 
+        import os
+
+        # 🔥 Force correct audio device EVERY boot
+        os.environ["SDL_AUDIODRIVER"] = "alsa"
+        os.environ["AUDIODEV"] = "hw:2,0"
+
         pygame.mixer.init()
         self._pa = pyaudio.PyAudio()
 
