@@ -20,7 +20,7 @@ import wave
 from pathlib import Path
 
 import numpy as np
-from openwakeword.model import Model as OWWModel
+#from openwakeword.model import Model as OWWModel
 import pyaudio
 import pygame
 from dotenv import load_dotenv
@@ -155,39 +155,8 @@ class VoiceAssistant:
     # ── 1. Wake word detection ─────────────────────────────────
 
     def listen_for_wake_word(self):
-        """
-        Block until the wake word is detected.
-        Uses openWakeWord with 1280-sample (80ms) frames at 16kHz.
-        No API key required — fully open source.
-        """
-        chunk = 1280  # 80ms at 16kHz — required by openWakeWord
-        stream = self._pa.open(
-            rate=SAMPLE_RATE,
-            channels=1,
-            format=pyaudio.paInt16,
-            input=True,
-            frames_per_buffer=chunk,
-        )
-
-        # Reset model scores so stale detections don't carry over
-        self._oww.reset()
-
-        try:
-            while True:
-                pcm = stream.read(chunk, exception_on_overflow=False)
-                audio_data = np.frombuffer(pcm, dtype=np.int16)
-
-                prediction = self._oww.predict(audio_data)
-
-                # Check all loaded wake word models
-                for model_name, score in prediction.items():
-                    if score > self._oww_threshold:
-                        print(f"\n✦  Wake word detected! (score={score:.2f})")
-                        return
-        finally:
-            stream.stop_stream()
-            stream.close()
-
+        print("[DEBUG] Wake word disabled — listening immediately")
+        
     # ── 2. Record user speech ──────────────────────────────────
 
     def record_speech(self) -> str | None:
