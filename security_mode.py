@@ -68,7 +68,7 @@ class SecuritySentry:
                 )
 
                 # 🔥 SPEED FIX 2: shorter delay
-                time.sleep(0.3)
+                time.sleep(0.6)
 
                 # capture frame
                 ret, frame = cap.read()
@@ -95,12 +95,13 @@ class SecuritySentry:
                 )
 
                 if len(faces) > 0:
-                    print("[SECURITY] HUMAN DETECTED")
-                    self._trigger_alarm()
-                    cap.release()
-                    return
+                    print("[SECURITY] HUMAN DETECTED");
 
-        cap.release()
+                    # keep alarming until disarmed
+                    while self.running:
+                        self._trigger_alarm()
+
+                        cap.release()
 
     # ─────────────────────────────
     # ALARM BEHAVIOR
