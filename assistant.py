@@ -28,7 +28,7 @@ from openai import OpenAI
 
 # 🔥 FORCE AUDIO DEVICE (must be at top level)
 os.environ["SDL_AUDIODRIVER"] = "alsa"
-os.environ["AUDIODEV"] = "hw:2,0"
+os.environ["AUDIODEV"] = "hw:3,0"
 
 from config import (
     DEFAULT_PERSONALITY,
