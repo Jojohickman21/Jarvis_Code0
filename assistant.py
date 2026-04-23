@@ -26,6 +26,8 @@ import pygame
 from dotenv import load_dotenv
 from openai import OpenAI
 
+os.environ["SDL_AUDIODRIVER"] = "alsa"
+
 from config import (
     DEFAULT_PERSONALITY,
     OPENAI_MODEL,
@@ -105,13 +107,10 @@ class VoiceAssistant:
             self.google = None
 
         # ── Audio ─────────────────────────────────────────────
-        os.environ["SDL_AUDIODRIVER"] = "alsa"
         os.environ["AUDIODEV"] = "hw:2,0"
 
         import os
 
-        # 🔥 Force correct audio device EVERY boot
-        os.environ["SDL_AUDIODRIVER"] = "alsa"
         os.environ["AUDIODEV"] = "hw:2,0"
 
         pygame.mixer.init()
