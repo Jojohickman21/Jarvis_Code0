@@ -333,7 +333,6 @@ def create_app(
                 set_status(f"Unknown personality: {name}")
         return redirect(url_for("index"))
    
-    print(f"[DEBUG] Button pressed: {name}")
     @app.route("/action/<name>", methods=["POST"])
     def action(name):
         valid = {
