@@ -46,7 +46,7 @@ WAKE_WORD = "jarvis"              # built-in Porcupine keyword (free)
 RECORD_SECONDS_MAX = 10           # max recording length after wake word
 SILENCE_THRESHOLD = 500           # RMS energy below this = silence
 SILENCE_DURATION = 1.5            # seconds of silence to stop recording
-SAMPLE_RATE = 44100              # 16kHz — required by Porcupine & Whisper
+SAMPLE_RATE = 48000              # 16kHz — required by Porcupine & Whisper
 OPENAI_MODEL = "gpt-4o-mini"     # fast, cheap, great for conversation
 DEFAULT_PERSONALITY = "happy_excited"
 TEMP_AUDIO_PATH = "/tmp/jarvis_recording.wav"
