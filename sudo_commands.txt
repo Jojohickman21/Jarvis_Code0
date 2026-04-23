@@ -8,3 +8,4 @@ pip3 install pyaudio numpy
 sudo apt install python3-smbus i2c-tools -y
 pip3 install opencv-python requests
 pip3 install -r requirements.txt
+pip3 install google-api-python-client google-auth-httplib2 google-auth-oauthlib

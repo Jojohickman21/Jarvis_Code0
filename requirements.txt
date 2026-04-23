@@ -28,3 +28,7 @@ opencv-python
 
 # Servo control (Raspberry Pi only — will fail on non-Pi machines)
 # adafruit-circuitpython-servokit
+
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib

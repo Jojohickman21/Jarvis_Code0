@@ -6,6 +6,7 @@
 # Cloud:  OpenAI Whisper (STT), GPT-4o-mini (LLM), ElevenLabs (TTS)
 
 from __future__ import annotations
+from google_actions import GoogleActions
 
 import io
 import json
@@ -95,6 +96,13 @@ class VoiceAssistant:
         # ── Hardware ──────────────────────────────────────────
         self.servo_controller = servo_controller
         self.motion_player = motion_player
+
+        # Google actions
+        try:
+            self.google = GoogleActions()
+        except Exception as exc:
+            print(f"[WARN] GoogleActions unavailable: {exc}")
+            self.google = None
 
         # ── Audio ─────────────────────────────────────────────
         pygame.mixer.init()
@@ -363,6 +371,125 @@ class VoiceAssistant:
         except Exception as exc:
             print(f"[ERROR] Motion playback failed: {exc}")
 
+    # ── 7. Google Action Command ────────────────────────────────
+
+    def _parse_google_command(self, user_text: str) -> dict:
+        """
+        Uses GPT to convert a spoken request into a structured Google action.
+        Returns a dict like:
+        {
+            "action": "schedule_today" | "create_calendar_event" | "send_email" | "none",
+            ...
+        }
+        """
+        system_prompt = (
+            "You convert user requests into JSON for Google app actions.\n"
+            "Return ONLY valid JSON.\n\n"
+            "Allowed actions:\n"
+            '1) "schedule_today"\n'
+            '2) "create_calendar_event"\n'
+            '3) "send_email"\n'
+            '4) "none"\n\n'
+            "Rules:\n"
+            "- If the user asks what is on their schedule today, use schedule_today.\n"
+            "- If the user wants a reminder, appointment, or calendar event, use create_calendar_event.\n"
+            "- If the user wants to send an email, use send_email.\n"
+            "- If the request is incomplete, include a short follow_up question.\n"
+            "- Use America/Los_Angeles time.\n"
+            "- For calendar events, include: summary, start_iso, end_iso, description.\n"
+            "- For email, include: to, subject, body.\n"
+            "- If not a Google task, return {\"action\":\"none\"}.\n"
+        )
+
+        try:
+            response = openai_client.chat.completions.create(
+                model=OPENAI_MODEL,
+                temperature=0,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_text},
+                ],
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as exc:
+            print(f"[ERROR] Google parser failed: {exc}")
+            return {"action": "none"}
+
+    def handle_google_command(self, user_text: str) -> str | None:
+        """
+        Returns a spoken reply if the text was a Google action.
+        Returns None if the text should go through normal conversation.
+        """
+        if self.google is None:
+            return None
+
+        text = user_text.lower().strip()
+
+        # Fast path for the demo feature you wanted
+        if any(
+            phrase in text
+            for phrase in [
+                "what's on my schedule today",
+                "what is on my schedule today",
+                "today's schedule",
+                "schedule today",
+            ]
+        ):
+            events = self.google.list_today_events()
+            if not events:
+                return "You are free for the rest of today."
+
+            lines = ["Here is your schedule today."]
+            for event in events:
+                start = event.get("start", "")
+                summary = event.get("summary", "(no title)")
+                lines.append(f"{start}: {summary}")
+            return " ".join(lines)
+
+        parsed = self._parse_google_command(user_text)
+        action = parsed.get("action", "none")
+
+        if action == "none":
+            return None
+
+        if action == "create_calendar_event":
+            summary = parsed.get("summary", "").strip()
+            start_iso = parsed.get("start_iso", "").strip()
+            end_iso = parsed.get("end_iso", "").strip()
+            description = parsed.get("description", "").strip()
+
+            if not summary or not start_iso or not end_iso:
+                follow_up = parsed.get("follow_up_question")
+                return follow_up or "What time should I put that on your calendar?"
+
+            created = self.google.create_calendar_event(
+                summary=summary,
+                start_iso=start_iso,
+                end_iso=end_iso,
+                description=description,
+            )
+            title = created.get("summary", summary)
+            return f"Done. I added {title} to your calendar."
+
+        if action == "send_email":
+            to = parsed.get("to", "").strip()
+            subject = parsed.get("subject", "").strip()
+            body = parsed.get("body", "").strip()
+
+            if not to or not subject or not body:
+                follow_up = parsed.get("follow_up_question")
+                return follow_up or "Who should I send it to, and what should it say?"
+
+            self.google.send_email(
+                to=to,
+                subject=subject,
+                body_text=body,
+            )
+            return f"Done. I sent the email to {to}."
+
+        return None
+
     # ── Main loop ──────────────────────────────────────────────
 
     def run(self):
@@ -394,8 +521,13 @@ class VoiceAssistant:
                     print("[INFO] Couldn't understand, going back to sleep.\n")
                     continue
 
-                # 4. Think
-                reply = self.think(user_text)
+                # 4. Check for Google app actions first
+                google_reply = self.handle_google_command(user_text)
+                if google_reply is not None:
+                    reply = google_reply
+                else:
+                    # 5. Think
+                    reply = self.think(user_text)
 
                 # 5. Speak + Emote concurrently
                 speak_thread = threading.Thread(target=self.speak, args=(reply,))
