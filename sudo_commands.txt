@@ -1,4 +1,5 @@
 sudo apt update
+sudo apt install git -y
 sudo apt install python3 python3-pip -y
 pip3 install adafruit-circuitpython-servokit
 sudo raspi-config
@@ -9,3 +10,64 @@ sudo apt install python3-smbus i2c-tools -y
 pip3 install opencv-python requests
 pip3 install -r requirements.txt
 pip3 install google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
+
+
+git config --global user.name "Your Name"
+git config --global user.email "[your_email@gmail.com](mailto:your_email@gmail.com)"
+
+ssh-keygen -t ed25519 -C "[your_email@gmail.com](mailto:your_email@gmail.com)"
+
+cat ~/.ssh/id_ed25519.pub
+
+# (paste into GitHub SSH keys)
+
+ssh -T [git@github.com](mailto:git@github.com)
+
+git clone [git@github.com](mailto:git@github.com):Jojohickman21/Jarvis_Code0.git
+
+cd Jarvis_Code0
+
+git checkout your-branch-name
+git pull
+
+
+
+
+# Update the Raspberry Pi / robot from SSH
+
+## 1) SSH into the Pi
+
+ssh luca@192.168.1.73
+
+## 2) Go to the project folder
+
+cd ~/Jarvis_Code0
+
+## 3) Make sure you are on the right branch
+
+git branch
+git checkout your-branch-name
+
+## 4) Pull the newest code from GitHub
+
+git pull origin your-branch-name
+
+## 5) Install any new Python packages
+
+pip3 install -r requirements.txt
+
+## 6) Restart the robot code
+
+# If you run it manually:
+
+pkill -f robot_dashboard.py
+python3 robot_dashboard.py
+
+# If you run it as a service:
+
+sudo systemctl restart robot.service
+
+## 7) Check status
+
+git status
