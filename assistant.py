@@ -113,7 +113,8 @@ class VoiceAssistant:
 
         # ── openWakeWord (fully open source, no API key needed) ──
         # Auto-downloads the model from HuggingFace on first run.
-        self._oww = OWWModel(wakeword_models=[WAKE_WORD])
+        self._oww = OWWModel()
+        self._oww.load_model(WAKE_WORD)
         self._oww_threshold = 0.5  # tune up (fewer false positives) or down
 
         # Thread-safe personality switching (dashboard can call set_personality)
