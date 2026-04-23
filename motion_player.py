@@ -1,69 +1,149 @@
 # motion_player.py
 
 import time
-from motions import PERSONALITY_MOTIONS
-
-
-def lerp(a: float, b: float, t: float) -> float:
-    return a + (b - a) * t
+from config import SERVO_CHANNELS
 
 
 class MotionPlayer:
     def __init__(self, servo_controller):
         self.servo_controller = servo_controller
 
-    def _interpolate_pose(self, start_pose: dict, end_pose: dict, t: float) -> dict:
-        """
-        Interpolates between two poses.
-        Uses the union of keys so the code stays resilient if poses change later.
-        """
-        all_names = set(start_pose) | set(end_pose)
-        pose = {}
+    def _set_pose(self, pose: dict):
+        pose_channels = {
+            SERVO_CHANNELS[name]: angle
+            for name, angle in pose.items()
+        }
+        self.servo_controller.set_pose(pose_channels)
 
-        for name in all_names:
-            start_angle = start_pose.get(name, end_pose.get(name, 90))
-            end_angle = end_pose.get(name, start_pose.get(name, 90))
-            pose[name] = lerp(start_angle, end_angle, t)
+    # ─────────────────────────────────────────────
+    # HAPPY (bouncy + playful)
+    # ─────────────────────────────────────────────
+    def _happy(self):
+        for _ in range(6):
+            self._set_pose({
+                "neck_yaw": 80,
+                "head_pitch": 85,
+                "left_arm": 70,
+                "right_arm": 70,
+            })
+            time.sleep(0.12)
 
-        return pose
+            self._set_pose({
+                "neck_yaw": 100,
+                "head_pitch": 95,
+                "left_arm": 110,
+                "right_arm": 110,
+            })
+            time.sleep(0.12)
 
-    def _play_pose_transition(self, start_pose: dict, end_pose: dict, steps: int, delay: float):
-        from config import SERVO_CHANNELS
+    # ─────────────────────────────────────────────
+    # ANGRY (fast + aggressive)
+    # ─────────────────────────────────────────────
+    def _angry(self):
+        for _ in range(10):
+            self._set_pose({
+                "neck_yaw": 70,
+                "head_pitch": 110,
+                "left_arm": 50,
+                "right_arm": 50,
+            })
+            time.sleep(0.07)
 
-        if steps <= 0:
-            pose_channels = {
-                SERVO_CHANNELS[name]: angle
-                for name, angle in end_pose.items()
-            }
-            self.servo_controller.set_pose(pose_channels)
-            return
+            self._set_pose({
+                "neck_yaw": 110,
+                "head_pitch": 100,
+                "left_arm": 130,
+                "right_arm": 130,
+            })
+            time.sleep(0.07)
 
-        for i in range(steps + 1):
-            t = i / steps
-            pose = self._interpolate_pose(start_pose, end_pose, t)
+    # ─────────────────────────────────────────────
+    # SCARED (rapid jitter)
+    # ─────────────────────────────────────────────
+    def _scared(self):
+        for _ in range(12):
+            self._set_pose({
+                "neck_yaw": 85,
+                "head_pitch": 70,
+                "left_arm": 120,
+                "right_arm": 120,
+            })
+            time.sleep(0.05)
 
-            pose_channels = {
-                SERVO_CHANNELS[name]: angle
-                for name, angle in pose.items()
-            }
+            self._set_pose({
+                "neck_yaw": 95,
+                "head_pitch": 75,
+                "left_arm": 110,
+                "right_arm": 110,
+            })
+            time.sleep(0.05)
 
-            self.servo_controller.set_pose(pose_channels)
-            time.sleep(delay)
-            
-    def play(self, personality: str, step_delay: float = 0.03):
-        """
-        Plays one of the prebuilt motions from motions.py.
-        Falls back to happy_excited if the requested motion is missing.
-        """
-        if personality not in PERSONALITY_MOTIONS:
-            personality = "happy_excited"
+    # ─────────────────────────────────────────────
+    # SAD (slow droop)
+    # ─────────────────────────────────────────────
+    def _sad(self):
+        for _ in range(3):
+            self._set_pose({
+                "neck_yaw": 90,
+                "head_pitch": 120,
+                "left_arm": 130,
+                "right_arm": 130,
+            })
+            time.sleep(0.6)
 
-        motion = PERSONALITY_MOTIONS[personality]
-        loops = motion["loops"]
-        steps = motion["steps"]
-        start_pose = motion["start_pose"]
-        end_pose = motion["end_pose"]
+            self._set_pose({
+                "neck_yaw": 90,
+                "head_pitch": 115,
+                "left_arm": 120,
+                "right_arm": 120,
+            })
+            time.sleep(0.6)
 
-        for _ in range(loops):
-            self._play_pose_transition(start_pose, end_pose, steps, step_delay)
-            self._play_pose_transition(end_pose, start_pose, steps, step_delay)
+    # ─────────────────────────────────────────────
+    # DISGUSTED (pull away + tilt)
+    # ─────────────────────────────────────────────
+    def _disgusted(self):
+        for _ in range(4):
+            self._set_pose({
+                "neck_yaw": 110,
+                "head_pitch": 100,
+                "left_arm": 90,
+                "right_arm": 90,
+            })
+            time.sleep(0.25)
+
+            self._set_pose({
+                "neck_yaw": 70,
+                "head_pitch": 95,
+                "left_arm": 85,
+                "right_arm": 85,
+            })
+            time.sleep(0.25)
+
+    # ─────────────────────────────────────────────
+    # NEUTRAL (reset)
+    # ─────────────────────────────────────────────
+    def _neutral(self):
+        self._set_pose({
+            "neck_yaw": 90,
+            "head_pitch": 90,
+            "left_arm": 90,
+            "right_arm": 90,
+        })
+
+    # ─────────────────────────────────────────────
+    # MAIN ENTRY
+    # ─────────────────────────────────────────────
+    def play(self, personality: str):
+        if personality == "happy_excited":
+            self._happy()
+        elif personality == "angry":
+            self._angry()
+        elif personality == "scared":
+            self._scared()
+        elif personality == "sad_tired":
+            self._sad()
+        elif personality == "disgusted":
+            self._disgusted()
+        else:
+            self._neutral()
