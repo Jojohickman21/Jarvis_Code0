@@ -28,16 +28,28 @@ class MotionPlayer:
         return pose
 
     def _play_pose_transition(self, start_pose: dict, end_pose: dict, steps: int, delay: float):
+        from config import SERVO_CHANNELS
+
         if steps <= 0:
-            self.servo_controller.set_pose(end_pose)
+            pose_channels = {
+                SERVO_CHANNELS[name]: angle
+                for name, angle in end_pose.items()
+            }
+            self.servo_controller.set_pose(pose_channels)
             return
 
         for i in range(steps + 1):
             t = i / steps
             pose = self._interpolate_pose(start_pose, end_pose, t)
-            self.servo_controller.set_pose(pose)
-            time.sleep(delay)
 
+            pose_channels = {
+                SERVO_CHANNELS[name]: angle
+                for name, angle in pose.items()
+            }
+
+            self.servo_controller.set_pose(pose_channels)
+            time.sleep(delay)
+            
     def play(self, personality: str, step_delay: float = 0.03):
         """
         Plays one of the prebuilt motions from motions.py.
