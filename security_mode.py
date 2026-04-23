@@ -1,8 +1,9 @@
-# security_mode.py (OPTIMIZED)
+# security_mode.py (FINAL OPTIMIZED)
 
 import cv2
 import time
 import threading
+import subprocess
 from config import SERVO_CHANNELS, CAMERA_INDEX
 
 
@@ -11,8 +12,8 @@ class SecuritySentry:
         self.servo_controller = servo_controller
         self.running = False
         self.thread = None
+        self.alarm_process = None
 
-        # Load face detector
         self.face_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         )
@@ -32,29 +33,31 @@ class SecuritySentry:
     def disarm(self, password):
         print("[SECURITY] Disarmed")
         self.running = False
+
+        # 🔊 Stop alarm audio
+        if self.alarm_process:
+            self.alarm_process.terminate()
+            self.alarm_process = None
+
         return True
 
     def is_armed(self):
         return self.running
 
     def status(self):
-        return "ARMED" if self.running else "DISARMED"
+        return "ALARM" if self.alarm_process else ("ARMED" if self.running else "DISARMED")
 
     # ─────────────────────────────
     # CORE LOOP
     # ─────────────────────────────
     def _run(self):
-        time.sleep(2)  # arm delay
+        time.sleep(2)
 
         cap = cv2.VideoCapture(CAMERA_INDEX)
-
-        # 🔥 SPEED FIX 1: low resolution
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
 
         frame_count = 0
-
-        # scan angles
         angles = list(range(60, 120, 10)) + list(range(120, 60, -10))
 
         while self.running:
@@ -67,24 +70,17 @@ class SecuritySentry:
                     SERVO_CHANNELS["neck_yaw"], angle
                 )
 
-                # 🔥 SPEED FIX 2: shorter delay
-                time.sleep(0.6)
+                time.sleep(0.5)
 
-                # capture frame
                 ret, frame = cap.read()
                 if not ret:
                     continue
 
                 frame_count += 1
-
-                # 🔥 SPEED FIX 3: skip frames
                 if frame_count % 3 != 0:
                     continue
 
-                # 🔥 SPEED FIX 4: resize for faster detection
                 small = cv2.resize(frame, (160, 120))
-
-                # 🔥 SPEED FIX 5: grayscale
                 gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
 
                 faces = self.face_cascade.detectMultiScale(
@@ -95,24 +91,32 @@ class SecuritySentry:
                 )
 
                 if len(faces) > 0:
-                    print("[SECURITY] HUMAN DETECTED");
+                    print("[SECURITY] HUMAN DETECTED")
+                    self._start_alarm()
+                    self._alarm_loop()
 
-                    # keep alarming until disarmed
-                    while self.running:
-                        self._trigger_alarm()
-
-                        cap.release()
+        cap.release()
 
     # ─────────────────────────────
-    # ALARM BEHAVIOR
+    # ALARM CONTROL
     # ─────────────────────────────
-    def _trigger_alarm(self):
-        print("[SECURITY] ALARM TRIGGERED")
+    def _start_alarm(self):
+        if self.alarm_process is None:
+            print("[SECURITY] STARTING ALARM AUDIO")
 
-        for _ in range(12):
-            if not self.running:
-                return
+            # 🔊 Digital volume boost with -f
+            self.alarm_process = subprocess.Popen([
+                "mpg123",
+                "-a", "hw:3,0",
+                "-f", "5000",      # 🔥 volume boost
+                "--loop", "-1",    # 🔥 infinite loop
+                "/home/luca/Jarvis_Code0/military_alarm.mp3"
+            ])
 
+    def _alarm_loop(self):
+        print("[SECURITY] ALARM LOOP ACTIVE")
+
+        while self.running:
             # aggressive motion
             self.servo_controller.set_pose({
                 SERVO_CHANNELS["left_arm"]: 50,
