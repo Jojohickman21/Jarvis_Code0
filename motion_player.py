@@ -39,47 +39,47 @@ class MotionPlayer:
             time.sleep(delay)
 
     # ─────────────────────────────────────────────
-    # HAPPY (one arm wave)
+    # HAPPY (LEFT ARM FULL WAVE)
     # ─────────────────────────────────────────────
     def _happy(self):
         for _ in range(4):
             self._set_pose({
                 "head_pitch": -5,
-                "right_arm": +40,
-                "left_arm": 0,
+                "left_arm": +170,   # full up
+                "right_arm": 0,
             })
-            time.sleep(0.15)
+            time.sleep(0.12)
 
             self._set_pose({
                 "head_pitch": +5,
-                "right_arm": -30,
-                "left_arm": 0,
+                "left_arm": -10,    # full down
+                "right_arm": 0,
             })
-            time.sleep(0.15)
+            time.sleep(0.12)
 
     # ─────────────────────────────────────────────
-    # ANGRY (both arms aggressive)
+    # ANGRY (FULL RANGE BOTH ARMS)
     # ─────────────────────────────────────────────
     def _angry(self):
         for _ in range(8):
             self._set_pose({
                 "neck_yaw": -20,
                 "head_pitch": +30,
-                "left_arm": +60,
-                "right_arm": +60,
+                "left_arm": +170,
+                "right_arm": +170,
             })
-            time.sleep(0.07)
+            time.sleep(0.06)
 
             self._set_pose({
                 "neck_yaw": +20,
                 "head_pitch": +20,
-                "left_arm": -20,
-                "right_arm": -20,
+                "left_arm": -10,
+                "right_arm": -10,
             })
-            time.sleep(0.07)
+            time.sleep(0.06)
 
     # ─────────────────────────────────────────────
-    # SCARED (head only jitter)
+    # SCARED (HEAD ONLY JITTER)
     # ─────────────────────────────────────────────
     def _scared(self):
         for _ in range(10):
@@ -96,7 +96,7 @@ class MotionPlayer:
             time.sleep(0.05)
 
     # ─────────────────────────────────────────────
-    # SAD (smooth "no" + head down)
+    # SAD (FASTER SMOOTH "NO")
     # ─────────────────────────────────────────────
     def _sad(self):
         base_pitch = +40  # head down
@@ -107,7 +107,7 @@ class MotionPlayer:
                 0,
                 -30,
                 fixed_pose={"head_pitch": base_pitch},
-                delay=0.02
+                delay=0.01   # 🔥 faster
             )
 
             self._smooth_move(
@@ -115,7 +115,7 @@ class MotionPlayer:
                 -30,
                 +30,
                 fixed_pose={"head_pitch": base_pitch},
-                delay=0.02
+                delay=0.01
             )
 
             self._smooth_move(
@@ -123,11 +123,11 @@ class MotionPlayer:
                 +30,
                 0,
                 fixed_pose={"head_pitch": base_pitch},
-                delay=0.02
+                delay=0.01
             )
 
     # ─────────────────────────────────────────────
-    # DISGUSTED (head pull away)
+    # DISGUSTED (HEAD ONLY)
     # ─────────────────────────────────────────────
     def _disgusted(self):
         for _ in range(3):
