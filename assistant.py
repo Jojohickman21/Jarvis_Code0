@@ -1,4 +1,4 @@
-# assistant.py — FINAL CLEAN VERSION (NO PYGAME, STABLE)
+# assistant.py — FINAL VERSION (WAKE WORD + NO PYGAME)
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import numpy as np
 import pyaudio
 from dotenv import load_dotenv
 from openai import OpenAI
+from openwakeword.model import Model as OWWModel
 
 from config import (
     DEFAULT_PERSONALITY,
@@ -31,16 +32,16 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 try:
     from elevenlabs import ElevenLabs
     elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
-except Exception:
+except:
     elevenlabs_client = None
     print("[WARN] ElevenLabs not available")
 
-# ─── Personality ───────────────────────────────────────────────
+
 def load_personalities(path="personality.json"):
     with open(path, "r") as f:
         return json.load(f)["personality_profiles"]
 
-# ─── Assistant ─────────────────────────────────────────────────
+
 class VoiceAssistant:
 
     def __init__(self):
@@ -53,16 +54,42 @@ class VoiceAssistant:
 
         self._pa = pyaudio.PyAudio()
 
-    # ── AUDIO OUTPUT (I2S) ─────────────────────────────────────
+        # 🔥 Wake word model
+        print("[INFO] Loading wake word model...")
+        self._oww = OWWModel(wakeword_models=["jarvis"])
+        self._threshold = 0.5
+
+    # ── AUDIO OUTPUT ───────────────────────────────────────────
     def _play_audio(self, filepath):
+        subprocess.run(["aplay", "-D", "plughw:2,0", filepath])
+
+    # ── WAKE WORD ──────────────────────────────────────────────
+    def listen_for_wake_word(self):
+        print("👂 Listening for 'Jarvis'...")
+
+        chunk = 1024
+        stream = self._pa.open(
+            rate=16000,
+            channels=1,
+            format=pyaudio.paInt16,
+            input=True,
+            frames_per_buffer=chunk,
+        )
+
         try:
-            subprocess.run([
-                "aplay",
-                "-D", "plughw:2,0",
-                filepath
-            ], check=True)
-        except Exception as e:
-            print(f"[ERROR] Audio playback failed: {e}")
+            while True:
+                data = stream.read(chunk, exception_on_overflow=False)
+                audio = np.frombuffer(data, dtype=np.int16)
+
+                prediction = self._oww.predict(audio)
+
+                if "jarvis" in prediction and prediction["jarvis"] > self._threshold:
+                    print("🟢 Wake word detected!")
+                    break
+
+        finally:
+            stream.stop_stream()
+            stream.close()
 
     # ── RECORD ────────────────────────────────────────────────
     def record(self):
@@ -82,6 +109,7 @@ class VoiceAssistant:
 
         for _ in range(int(SAMPLE_RATE / chunk * RECORD_SECONDS_MAX)):
             data = stream.read(chunk, exception_on_overflow=False)
+
             samples = np.frombuffer(data, dtype=np.int16).astype(np.float32)
             rms = np.sqrt(np.mean(samples ** 2))
 
@@ -137,68 +165,60 @@ class VoiceAssistant:
             return reply
         except Exception as e:
             print(f"[ERROR] GPT failed: {e}")
-            return "Sorry, something went wrong."
+            return "Something went wrong."
 
     # ── SPEAK ────────────────────────────────────────────────
     def speak(self, text):
         if elevenlabs_client is None:
-            print(f"[TTS FALLBACK] {text}")
+            print(text)
             return
 
-        try:
-            audio = elevenlabs_client.text_to_speech.convert(
-                voice_id="EXAVITQu4vr4xnSDxMaL",
-                text=text,
-                model_id="eleven_multilingual_v2"
-            )
+        audio = elevenlabs_client.text_to_speech.convert(
+            voice_id="EXAVITQu4vr4xnSDxMaL",
+            text=text,
+            model_id="eleven_multilingual_v2"
+        )
 
-            audio_bytes = b"".join(audio)
+        audio_bytes = b"".join(audio)
 
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-                tmp.write(audio_bytes)
-                mp3_path = tmp.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp.write(audio_bytes)
+            mp3_path = tmp.name
 
-            wav_path = mp3_path.replace(".mp3", ".wav")
+        wav_path = mp3_path.replace(".mp3", ".wav")
 
-            subprocess.run([
-                "ffmpeg", "-y", "-i", mp3_path, wav_path
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", mp3_path, wav_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
-            self._play_audio(wav_path)
+        self._play_audio(wav_path)
 
-            os.remove(mp3_path)
-            os.remove(wav_path)
-
-        except Exception as e:
-            print(f"[ERROR] TTS failed: {e}")
-            print(f"[FALLBACK TEXT] {text}")
+        os.remove(mp3_path)
+        os.remove(wav_path)
 
     # ── MAIN LOOP ─────────────────────────────────────────────
     def run(self):
-        print("🚀 JARVIS ONLINE (NO WAKE WORD MODE)")
+        print("🚀 JARVIS ONLINE (WAKE WORD ENABLED)")
 
         try:
             while True:
-                audio = self.record()
+                self.listen_for_wake_word()
 
+                audio = self.record()
                 text = self.transcribe(audio)
+
                 if not text:
-                    print("[INFO] No speech detected\n")
                     continue
 
                 reply = self.think(text)
                 self.speak(reply)
 
-                print()  # spacing
+                print()
 
         except KeyboardInterrupt:
-            print("\n[INFO] Shutting down JARVIS...")
+            print("\n[INFO] Shutting down...")
 
         finally:
-            self.cleanup()
-
-    # ── CLEANUP ───────────────────────────────────────────────
-    def cleanup(self):
-        if self._pa:
             self._pa.terminate()
-        print("[INFO] Cleanup complete.")
