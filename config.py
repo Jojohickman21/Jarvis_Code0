@@ -53,10 +53,10 @@ TEMP_AUDIO_PATH = "/tmp/jarvis_recording.wav"
 
 # AUDIO / CAMERA CONFIG
 # Speaker (USB audio device)
-AUDIO_OUTPUT_DEVICE = "plughw:2,0"
+AUDIO_OUTPUT_DEVICE = "plughw:3,0"
 
 # Microphone (use webcam mic — better quality usually)
-AUDIO_INPUT_DEVICE = "plughw:3,0"
+AUDIO_INPUT_DEVICE = "plughw:2,0"
 
 # Webcam
 CAMERA_INDEX = 0
