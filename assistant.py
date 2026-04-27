@@ -82,7 +82,7 @@ class VoiceAssistant:
         try:
             subprocess.run([
                 "aplay",
-                "-D", "default",   # change to hw:2,0 if needed
+                "-D", "plughw:2,0",   # change to hw:2,0 if needed
                 filepath
             ], check=True)
         except Exception as e:
