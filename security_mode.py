@@ -1,15 +1,18 @@
-# security_mode.py (FINAL OPTIMIZED)
+# security_mode.py — FINAL (LOUD ALARM + ANGRY MOTION)
 
 import cv2
 import time
 import threading
 import subprocess
-from config import SERVO_CHANNELS, CAMERA_INDEX
+
+from config import SERVO_CHANNELS, CAMERA_INDEX, AUDIO_OUTPUT_DEVICE, ALARM_SOUND_PATH
 
 
 class SecuritySentry:
-    def __init__(self, servo_controller):
+    def __init__(self, servo_controller, motion_player=None):
         self.servo_controller = servo_controller
+        self.motion_player = motion_player
+
         self.running = False
         self.thread = None
         self.alarm_process = None
@@ -34,7 +37,6 @@ class SecuritySentry:
         print("[SECURITY] Disarmed")
         self.running = False
 
-        # 🔊 Stop alarm audio
         if self.alarm_process:
             self.alarm_process.terminate()
             self.alarm_process = None
@@ -65,7 +67,7 @@ class SecuritySentry:
                 if not self.running:
                     break
 
-                # move neck
+                # head scan
                 self.servo_controller.set_angle(
                     SERVO_CHANNELS["neck_yaw"], angle
                 )
@@ -98,36 +100,40 @@ class SecuritySentry:
         cap.release()
 
     # ─────────────────────────────
-    # ALARM CONTROL
+    # ALARM AUDIO (LOUD FIXED)
     # ─────────────────────────────
     def _start_alarm(self):
         if self.alarm_process is None:
             print("[SECURITY] STARTING ALARM AUDIO")
 
-            # 🔊 Digital volume boost with -f
+            # 🔥 Uses SAME system as Jarvis voice (loud + consistent)
             self.alarm_process = subprocess.Popen([
-                "mpg123",
-                "-a", "hw:3,0",
-                "-f", "5000",      # 🔥 volume boost
-                "--loop", "-1",    # 🔥 infinite loop
-                "/home/luca/Jarvis_Code0/alarm.mp3"
+                "bash", "-c",
+                f"while true; do aplay -D {AUDIO_OUTPUT_DEVICE} {ALARM_SOUND_PATH}; done"
             ])
 
+    # ─────────────────────────────
+    # ALARM MOTION (ANGRY MODE)
+    # ─────────────────────────────
     def _alarm_loop(self):
         print("[SECURITY] ALARM LOOP ACTIVE")
 
         while self.running:
-            # aggressive motion
-            self.servo_controller.set_pose({
-                SERVO_CHANNELS["left_arm"]: 50,
-                SERVO_CHANNELS["right_arm"]: 50,
-                SERVO_CHANNELS["neck_yaw"]: 70,
-            })
-            time.sleep(0.07)
+            if self.motion_player:
+                # 🔥 Use your existing angry motion system
+                self.motion_player.play("angry")
+            else:
+                # fallback if motion system not passed
+                self.servo_controller.set_pose({
+                    SERVO_CHANNELS["left_arm"]: 50,
+                    SERVO_CHANNELS["right_arm"]: 50,
+                    SERVO_CHANNELS["neck_yaw"]: 70,
+                })
+                time.sleep(0.07)
 
-            self.servo_controller.set_pose({
-                SERVO_CHANNELS["left_arm"]: 130,
-                SERVO_CHANNELS["right_arm"]: 130,
-                SERVO_CHANNELS["neck_yaw"]: 110,
-            })
-            time.sleep(0.07)
+                self.servo_controller.set_pose({
+                    SERVO_CHANNELS["left_arm"]: 130,
+                    SERVO_CHANNELS["right_arm"]: 130,
+                    SERVO_CHANNELS["neck_yaw"]: 110,
+                })
+                time.sleep(0.07)
