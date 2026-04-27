@@ -1,12 +1,6 @@
-# main.py — JARVIS Desktop Assistant
-#
-# Starts the voice assistant and the web dashboard on separate threads.
-# Say "Jarvis" to interact. Use the dashboard to switch personalities.
+# main.py — FINAL CLEAN VERSION
 
 import threading
-import time
-
-from security_mode import SecuritySentry
 
 from config import (
     DEFAULT_PERSONALITY,
@@ -16,11 +10,12 @@ from config import (
     SERVO_LIMITS,
 )
 
-# ── Hardware imports (graceful fallback for non-Pi machines) ────
+# ── Hardware imports ─────────────────────────────
 try:
     from servo_controller import ServoController
     from calibration import CalibrationManager
     from motion_player import MotionPlayer
+    from security_mode import SecuritySentry
 
     HAS_SERVOS = True
 except ImportError:
@@ -29,12 +24,14 @@ except ImportError:
 
 
 def main():
-    # ── Set up servos (if on a Raspberry Pi) ──────────────────
     servos = None
     motion_player = None
+    sentry = None
 
+    # ── Setup hardware ───────────────────────────
     if HAS_SERVOS:
         servos = ServoController(channels=16)
+
         calibration = CalibrationManager(
             servo_controller=servos,
             servo_channels=SERVO_CHANNELS,
@@ -42,19 +39,21 @@ def main():
             offsets=SERVO_OFFSETS,
             servo_limits=SERVO_LIMITS,
         )
+
         motion_player = MotionPlayer(servos)
 
         print("Moving robot to neutral pose...")
         calibration.move_to_neutral()
         print("Calibration complete.")
 
-    # ── Launch voice assistant ────────────────────────────────
+        # 🔥 Security system now correctly wired
+        sentry = SecuritySentry(servos, motion_player)
+
+    # ── Assistant ────────────────────────────────
     from assistant import VoiceAssistant
-
     assistant = VoiceAssistant(motion_player=motion_player)
-    sentry = SecuritySentry(servo_controller, motion_player)
 
-    # ── Launch web dashboard in background ────────────────────
+    # ── Dashboard ────────────────────────────────
     try:
         from robot_dashboard import create_app
 
@@ -69,11 +68,13 @@ def main():
             daemon=True,
         )
         dashboard_thread.start()
+
         print("[INFO] Dashboard running at http://0.0.0.0:5000")
+
     except Exception as exc:
         print(f"[WARN] Dashboard failed to start: {exc}")
 
-    # ── Run the voice loop (blocking) ─────────────────────────
+    # ── Run assistant (main loop) ────────────────
     assistant.run()
 
 
