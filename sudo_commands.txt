@@ -14,6 +14,7 @@ pip3 install google-api-python-client google-auth-httplib2 google-auth-oauthlib
 sudo apt install python3-venv -y
 python3 -m venv venv
 pip install adafruit-circuitpython-servokit
+sudo apt install mpg123 -y
 
 
 

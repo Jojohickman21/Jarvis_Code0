@@ -110,7 +110,7 @@ class SecuritySentry:
                 "-a", "hw:3,0",
                 "-f", "5000",      # 🔥 volume boost
                 "--loop", "-1",    # 🔥 infinite loop
-                "/home/luca/Jarvis_Code0/military_alarm.mp3"
+                "/home/luca/Jarvis_Code0/alarm.mp3"
             ])
 
     def _alarm_loop(self):
