@@ -112,14 +112,26 @@ class SecuritySentry:
     # ANGRY MOTION BURST (non-blocking scanning)
     # ─────────────────────────────
     def _alarm_burst(self):
-        print("[SECURITY] ALARM BURST")
+        print("[SECURITY] ALARM BURST (HARDCODED)")
 
-        for _ in range(3):
+        for _ in range(6):   # increase for longer aggression
             if not self.running:
                 break
 
-            if self.motion_player:
-                print("[DEBUG] FORCING ANGRY MOTION")
-                self.motion_player._angry()
+            # 🔥 FULL ANGRY POSE (UP)
+            self.servo_controller.set_pose({
+                SERVO_CHANNELS["neck_yaw"]: 85,
+                SERVO_CHANNELS["head_pitch"]: 95,
+                SERVO_CHANNELS["left_arm"]: 170,
+                SERVO_CHANNELS["right_arm"]: 170,
+            })
+            time.sleep(0.06)
 
-            time.sleep(0.1)
+            # 🔥 FULL ANGRY POSE (DOWN)
+            self.servo_controller.set_pose({
+                SERVO_CHANNELS["neck_yaw"]: 115,
+                SERVO_CHANNELS["head_pitch"]: 85,
+                SERVO_CHANNELS["left_arm"]: 10,
+                SERVO_CHANNELS["right_arm"]: 10,
+            })
+            time.sleep(0.06)
