@@ -73,8 +73,8 @@ class MotionPlayer:
             self._set_pose({
                 "neck_yaw": +20,
                 "head_pitch": +20,
-                "left_arm": -10,
-                "right_arm": -10,
+                "left_arm": -20,
+                "right_arm": -20,
             })
             time.sleep(0.06)
 

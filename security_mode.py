@@ -118,24 +118,8 @@ class SecuritySentry:
             if not self.running:
                 break
 
-            # 🔊 restart sound if it ended
-            if self.alarm_process and self.alarm_process.poll() is not None:
-                self.alarm_process = None
-                self._start_alarm()
-
             if self.motion_player:
-                self.motion_player.play("angry")
-            else:
-                self.servo_controller.set_pose({
-                    SERVO_CHANNELS["left_arm"]: 50,
-                    SERVO_CHANNELS["right_arm"]: 50,
-                    SERVO_CHANNELS["neck_yaw"]: 70,
-                })
-                time.sleep(0.07)
+                print("[DEBUG] FORCING ANGRY MOTION")
+                self.motion_player._angry()
 
-                self.servo_controller.set_pose({
-                    SERVO_CHANNELS["left_arm"]: 130,
-                    SERVO_CHANNELS["right_arm"]: 130,
-                    SERVO_CHANNELS["neck_yaw"]: 110,
-                })
-                time.sleep(0.07)
+            time.sleep(0.1)
