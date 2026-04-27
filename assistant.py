@@ -1,4 +1,4 @@
-# assistant.py — FINAL VERSION (JARVIS + AI EMOTION SYSTEM + DASHBOARD FIX)
+# assistant.py — FINAL VERSION (JARVIS + AI EMOTION + TOGGLE)
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import os
 import tempfile
 import wave
 import subprocess
+import time
 
 import numpy as np
 import pyaudio
@@ -23,7 +24,6 @@ from config import (
     TEMP_AUDIO_PATH,
 )
 
-# ─── Setup ─────────────────────────────────────────────────────
 load_dotenv()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -49,12 +49,13 @@ class VoiceAssistant:
 
         self._pa = pyaudio.PyAudio()
 
-    # ✅ 🔥 FIX: expose personality for dashboard
+        # 🔥 NEW: listening toggle
+        self.listening_enabled = True
+
     @property
     def personality_name(self):
         return self._personality_name
 
-    # ── SET PERSONALITY ─────────────────────────────────────────
     def set_personality(self, name):
         if name in self.personalities:
             if name != self._personality_name:
@@ -62,11 +63,14 @@ class VoiceAssistant:
             self._personality_name = name
             self._personality = self.personalities[name]
 
-    # ── AUDIO OUTPUT ───────────────────────────────────────────
-    def _play_audio(self, filepath):
-        subprocess.run(["aplay", "-D", "plughw:2,0", filepath])
+    # 🔥 NEW: toggle control
+    def set_listening(self, enabled: bool):
+        self.listening_enabled = enabled
+        print(f"[INFO] Listening {'ON' if enabled else 'OFF'}")
 
-    # ── RECORD ────────────────────────────────────────────────
+    def _play_audio(self, filepath):
+        subprocess.Popen(["aplay", "-D", "plughw:2,0", filepath])
+
     def record(self):
         chunk = 1024
 
@@ -108,7 +112,6 @@ class VoiceAssistant:
 
         return TEMP_AUDIO_PATH
 
-    # ── TRANSCRIBE ────────────────────────────────────────────
     def transcribe(self, path):
         try:
             with open(path, "rb") as f:
@@ -123,7 +126,6 @@ class VoiceAssistant:
             print(f"[ERROR] Transcription failed: {e}")
             return None
 
-    # ── THINK (AI EMOTION SYSTEM) ─────────────────────────────
     def think(self, text):
         try:
             response = openai_client.chat.completions.create(
@@ -134,18 +136,11 @@ class VoiceAssistant:
                         "content": f"""
 You are an AI that MUST respond in JSON format ONLY.
 
-Choose the most appropriate emotion for the response from:
-- happy_excited
-- angry
-- scared
-- sad_tired
-- disgusted
+Choose emotion from:
+happy_excited, angry, scared, sad_tired, disgusted
 
-Return JSON in this exact format:
-{{
-  "emotion": "...",
-  "response": "..."
-}}
+Return JSON:
+{{ "emotion": "...", "response": "..." }}
 
 User input: {text}
 """
@@ -153,21 +148,17 @@ User input: {text}
                 ]
             )
 
-            content = response.choices[0].message.content.strip()
-            data = json.loads(content)
-
+            data = json.loads(response.choices[0].message.content.strip())
             emotion = data.get("emotion", DEFAULT_PERSONALITY)
-            reply = data.get("response", "Something went wrong.")
+            reply = data.get("response", "Error.")
 
             print(f"🤖 [{emotion}] {reply}")
-
             return emotion, reply
 
         except Exception as e:
             print(f"[ERROR] GPT failed: {e}")
-            return DEFAULT_PERSONALITY, "Something went wrong."
+            return DEFAULT_PERSONALITY, "Error."
 
-    # ── SPEAK (PERSONALITY VOICE) ─────────────────────────────
     def speak(self, text):
         if elevenlabs_client is None:
             print(text)
@@ -198,15 +189,18 @@ User input: {text}
 
         self._play_audio(wav_path)
 
-        os.remove(mp3_path)
-        os.remove(wav_path)
-
-    # ── MAIN LOOP ─────────────────────────────────────────────
     def run(self):
-        print("🚀 JARVIS ONLINE (AI EMOTION ENABLED)")
+        print("🚀 JARVIS ONLINE")
 
         try:
             while True:
+
+                # 🔥 KEY CHANGE
+                if not self.listening_enabled:
+                    print("[DEBUG] Listening OFF")
+                    time.sleep(0.5)
+                    continue
+
                 audio = self.record()
                 text = self.transcribe(audio)
 
@@ -214,19 +208,14 @@ User input: {text}
                     continue
 
                 if "jarvis" not in text.lower():
-                    print("[DEBUG] No 'jarvis' detected\n")
+                    print("[DEBUG] No 'jarvis'")
                     continue
-
-                print("🟢 Jarvis detected!")
 
                 clean_text = text.lower().replace("jarvis", "").strip()
 
                 emotion, reply = self.think(clean_text)
-
                 self.set_personality(emotion)
                 self.speak(reply)
-
-                print()
 
         except KeyboardInterrupt:
             print("\n[INFO] Shutting down...")
