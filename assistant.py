@@ -82,7 +82,8 @@ class VoiceAssistant:
 
         for _ in range(int(SAMPLE_RATE / chunk * RECORD_SECONDS_MAX)):
             data = stream.read(chunk, exception_on_overflow=False)
-            rms = np.sqrt(np.mean(np.frombuffer(data, dtype=np.int16) ** 2))
+            samples = np.frombuffer(data, dtype=np.int16).astype(np.float32)
+            rms = np.sqrt(np.mean(samples ** 2))
 
             frames.append(data)
 
