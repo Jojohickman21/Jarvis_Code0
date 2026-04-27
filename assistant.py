@@ -1,4 +1,4 @@
-# assistant.py — FINAL VERSION (SYNCED MOTION + SPEECH)
+# assistant.py — FINAL VERSION (SYNCED MOTION + SPEECH + RETURN TO NEUTRAL)
 
 from __future__ import annotations
 
@@ -68,11 +68,9 @@ class VoiceAssistant:
         self.listening_enabled = enabled
         print(f"[INFO] Listening {'ON' if enabled else 'OFF'}")
 
-    # ─────────────────────────────────────────────
     def _play_audio(self, filepath):
         subprocess.Popen(["aplay", "-D", AUDIO_OUTPUT_DEVICE, filepath])
 
-    # ─────────────────────────────────────────────
     def _generate_audio(self, text):
         if elevenlabs_client is None:
             return None
@@ -102,7 +100,6 @@ class VoiceAssistant:
 
         return wav_path
 
-    # ─────────────────────────────────────────────
     def record(self):
         chunk = 1024
 
@@ -144,7 +141,6 @@ class VoiceAssistant:
 
         return TEMP_AUDIO_PATH
 
-    # ─────────────────────────────────────────────
     def transcribe(self, path):
         try:
             with open(path, "rb") as f:
@@ -159,7 +155,6 @@ class VoiceAssistant:
             print(f"[ERROR] Transcription failed: {e}")
             return None
 
-    # ─────────────────────────────────────────────
     def think(self, text):
         try:
             response = openai_client.chat.completions.create(
@@ -189,7 +184,6 @@ User: {text}
             print(f"[ERROR] GPT failed: {e}")
             return DEFAULT_PERSONALITY, "Error."
 
-    # ─────────────────────────────────────────────
     def run(self):
         print("🚀 JARVIS ONLINE")
 
@@ -218,12 +212,12 @@ User: {text}
                 emotion, reply = self.think(clean_text)
                 self.set_personality(emotion)
 
-                # 🔥 Generate audio FIRST
+                # 🔥 Generate audio first
                 audio_path = self._generate_audio(reply)
 
                 threads = []
 
-                # 🔥 motion + audio start together
+                # 🔥 Motion thread
                 if self.motion_player:
                     t_motion = threading.Thread(
                         target=self.motion_player.play,
@@ -232,6 +226,7 @@ User: {text}
                     threads.append(t_motion)
                     t_motion.start()
 
+                # 🔥 Audio thread
                 if audio_path:
                     t_audio = threading.Thread(
                         target=self._play_audio,
@@ -240,8 +235,14 @@ User: {text}
                     threads.append(t_audio)
                     t_audio.start()
 
+                # wait for both
                 for t in threads:
                     t.join()
+
+                # 🔥 NEW: return to neutral after action
+                if self.motion_player:
+                    time.sleep(0.1)
+                    self.motion_player.play("neutral")
 
         except KeyboardInterrupt:
             print("\n[INFO] Shutting down...")
