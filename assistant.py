@@ -1,12 +1,10 @@
-# assistant.py — JARVIS Voice Assistant (CLEAN VERSION)
+# assistant.py — FINAL CLEAN VERSION (NO PYGAME, STABLE)
 
 from __future__ import annotations
-from google_actions import GoogleActions
 
 import json
 import os
 import tempfile
-import threading
 import time
 import wave
 import subprocess
@@ -33,7 +31,7 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 try:
     from elevenlabs import ElevenLabs
     elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
-except:
+except Exception:
     elevenlabs_client = None
     print("[WARN] ElevenLabs not available")
 
@@ -57,11 +55,14 @@ class VoiceAssistant:
 
     # ── AUDIO OUTPUT (I2S) ─────────────────────────────────────
     def _play_audio(self, filepath):
-        subprocess.run([
-            "aplay",
-            "-D", "plughw:2,0",
-            filepath
-        ])
+        try:
+            subprocess.run([
+                "aplay",
+                "-D", "plughw:2,0",
+                filepath
+            ], check=True)
+        except Exception as e:
+            print(f"[ERROR] Audio playback failed: {e}")
 
     # ── RECORD ────────────────────────────────────────────────
     def record(self):
@@ -105,65 +106,98 @@ class VoiceAssistant:
 
     # ── TRANSCRIBE ────────────────────────────────────────────
     def transcribe(self, path):
-        with open(path, "rb") as f:
-            result = openai_client.audio.transcriptions.create(
-                model="whisper-1",
-                file=f
-            )
-        text = result.text.strip()
-        print(f"👤 {text}")
-        return text
+        try:
+            with open(path, "rb") as f:
+                result = openai_client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=f
+                )
+            text = result.text.strip()
+            print(f"👤 {text}")
+            return text
+        except Exception as e:
+            print(f"[ERROR] Transcription failed: {e}")
+            return None
 
     # ── THINK ────────────────────────────────────────────────
     def think(self, text):
-        self.conversation.append({"role": "user", "content": text})
+        try:
+            self.conversation.append({"role": "user", "content": text})
 
-        response = openai_client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=self.conversation
-        )
+            response = openai_client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=self.conversation
+            )
 
-        reply = response.choices[0].message.content
-        print(f"🤖 {reply}")
+            reply = response.choices[0].message.content.strip()
+            print(f"🤖 {reply}")
 
-        self.conversation.append({"role": "assistant", "content": reply})
-        return reply
+            self.conversation.append({"role": "assistant", "content": reply})
+            return reply
+        except Exception as e:
+            print(f"[ERROR] GPT failed: {e}")
+            return "Sorry, something went wrong."
 
     # ── SPEAK ────────────────────────────────────────────────
     def speak(self, text):
         if elevenlabs_client is None:
-            print(text)
+            print(f"[TTS FALLBACK] {text}")
             return
 
-        audio = elevenlabs_client.text_to_speech.convert(
-            voice_id="EXAVITQu4vr4xnSDxMaL",
-            text=text,
-            model_id="eleven_multilingual_v2"
-        )
+        try:
+            audio = elevenlabs_client.text_to_speech.convert(
+                voice_id="EXAVITQu4vr4xnSDxMaL",
+                text=text,
+                model_id="eleven_multilingual_v2"
+            )
 
-        audio_bytes = b"".join(audio)
+            audio_bytes = b"".join(audio)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-            tmp.write(audio_bytes)
-            mp3_path = tmp.name
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                tmp.write(audio_bytes)
+                mp3_path = tmp.name
 
-        wav_path = mp3_path.replace(".mp3", ".wav")
+            wav_path = mp3_path.replace(".mp3", ".wav")
 
-        subprocess.run([
-            "ffmpeg", "-y", "-i", mp3_path, wav_path
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run([
+                "ffmpeg", "-y", "-i", mp3_path, wav_path
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        self._play_audio(wav_path)
+            self._play_audio(wav_path)
 
-        os.remove(mp3_path)
-        os.remove(wav_path)
+            os.remove(mp3_path)
+            os.remove(wav_path)
+
+        except Exception as e:
+            print(f"[ERROR] TTS failed: {e}")
+            print(f"[FALLBACK TEXT] {text}")
 
     # ── MAIN LOOP ─────────────────────────────────────────────
     def run(self):
-        print("🚀 JARVIS ONLINE")
+        print("🚀 JARVIS ONLINE (NO WAKE WORD MODE)")
 
-        while True:
-            audio = self.record()
-            text = self.transcribe(audio)
-            reply = self.think(text)
-            self.speak(reply)
+        try:
+            while True:
+                audio = self.record()
+
+                text = self.transcribe(audio)
+                if not text:
+                    print("[INFO] No speech detected\n")
+                    continue
+
+                reply = self.think(text)
+                self.speak(reply)
+
+                print()  # spacing
+
+        except KeyboardInterrupt:
+            print("\n[INFO] Shutting down JARVIS...")
+
+        finally:
+            self.cleanup()
+
+    # ── CLEANUP ───────────────────────────────────────────────
+    def cleanup(self):
+        if self._pa:
+            self._pa.terminate()
+        print("[INFO] Cleanup complete.")
