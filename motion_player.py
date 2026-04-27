@@ -158,7 +158,7 @@ class MotionPlayer:
     # MAIN ENTRY
     # ─────────────────────────────────────────────
     def play(self, personality: str):
-        if personality == "happy_excited":
+        if personality in ["happy_excited", "rizz"]:
             self._happy()
         elif personality == "angry":
             self._angry()

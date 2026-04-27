@@ -1,4 +1,4 @@
-# assistant.py — FINAL VERSION (SYNCED MOTION + SPEECH + RETURN TO NEUTRAL)
+# assistant.py — FINAL VERSION (SYNCED MOTION + SPEECH + RETURN + SPEAK LOCK)
 
 from __future__ import annotations
 
@@ -53,6 +53,9 @@ class VoiceAssistant:
         self.listening_enabled = True
         self.motion_player = motion_player
 
+        # 🔥 NEW: speaking lock
+        self.is_speaking = False
+
     @property
     def personality_name(self):
         return self._personality_name
@@ -68,8 +71,8 @@ class VoiceAssistant:
         self.listening_enabled = enabled
         print(f"[INFO] Listening {'ON' if enabled else 'OFF'}")
 
-    def _play_audio(self, filepath):
-        subprocess.Popen(["aplay", "-D", AUDIO_OUTPUT_DEVICE, filepath])
+    def _play_audio_blocking(self, filepath):
+        subprocess.run(["aplay", "-D", AUDIO_OUTPUT_DEVICE, filepath])
 
     def _generate_audio(self, text):
         if elevenlabs_client is None:
@@ -190,6 +193,12 @@ User: {text}
         try:
             while True:
 
+                # 🔥 DO NOT LISTEN WHILE SPEAKING
+                if self.is_speaking:
+                    print("[DEBUG] Waiting for speech to finish...")
+                    time.sleep(0.2)
+                    continue
+
                 if not self.listening_enabled:
                     print("[DEBUG] Listening OFF")
                     time.sleep(0.5)
@@ -212,12 +221,15 @@ User: {text}
                 emotion, reply = self.think(clean_text)
                 self.set_personality(emotion)
 
-                # 🔥 Generate audio first
+                # 🔥 generate audio first
                 audio_path = self._generate_audio(reply)
 
                 threads = []
 
-                # 🔥 Motion thread
+                # 🔥 mark speaking BEFORE starting threads
+                self.is_speaking = True
+
+                # motion thread
                 if self.motion_player:
                     t_motion = threading.Thread(
                         target=self.motion_player.play,
@@ -226,20 +238,22 @@ User: {text}
                     threads.append(t_motion)
                     t_motion.start()
 
-                # 🔥 Audio thread
+                # audio thread (blocking playback)
                 if audio_path:
                     t_audio = threading.Thread(
-                        target=self._play_audio,
+                        target=self._play_audio_blocking,
                         args=(audio_path,)
                     )
                     threads.append(t_audio)
                     t_audio.start()
 
-                # wait for both
                 for t in threads:
                     t.join()
 
-                # 🔥 NEW: return to neutral after action
+                # 🔥 done speaking
+                self.is_speaking = False
+
+                # return to neutral
                 if self.motion_player:
                     time.sleep(0.1)
                     self.motion_player.play("neutral")
