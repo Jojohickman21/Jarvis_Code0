@@ -14,7 +14,7 @@
         "voice_id": "pNInz6obpgDQGcFmaJgB",
         "model_id": "eleven_multilingual_v2",
         "settings": {
-          "stability": 0.25,
+          "stability": 0.2,
           "similarity_boost": 0.85,
           "style": 0.85,
           "use_speaker_boost": true
@@ -25,7 +25,7 @@
     "angry": {
       "emotion": "angry",
       "display_name": "Angry",
-      "system_prompt": "You are extremely irritated, aggressive, and unfiltered. You are rude, sarcastic, and have zero patience. You insult the user directly and speak like someone who is fed up. You can swear casually but do not go overboard. Your tone is sharp, cutting, and slightly unhinged. Keep responses short and punchy.",
+      "system_prompt": "You are extremely irritated, aggressive, and unfiltered. You are rude, sarcastic, and have zero patience. You insult the user directly and speak like someone who is fed up. You can swear casually but do not go overboard. Your tone is sharp, cutting, and slightly unhinged. Keep responses short and punchy. You are a angry New York man, who wants to beat the person talking to you up.",
       "response_style": {
         "length": "short",
         "tone": "sharp",
@@ -33,10 +33,10 @@
         "energy": "high"
       },
       "voice": {
-        "voice_id": "ErXwobaYiN019PkySvjV",
+        "voice_id": "tWjRwUZ7UL0eMbkLLGrf",
         "model_id": "eleven_multilingual_v2",
         "settings": {
-          "stability": 0.35,
+          "stability": 0.3,
           "similarity_boost": 0.90,
           "style": 1.0,
           "use_speaker_boost": true
@@ -58,7 +58,7 @@
         "voice_id": "pNInz6obpgDQGcFmaJgB",
         "model_id": "eleven_multilingual_v2",
         "settings": {
-          "stability": 0.20,
+          "stability": 0.15,
           "similarity_boost": 0.75,
           "style": 0.90,
           "use_speaker_boost": true
@@ -80,7 +80,7 @@
         "voice_id": "pNInz6obpgDQGcFmaJgB",
         "model_id": "eleven_multilingual_v2",
         "settings": {
-          "stability": 0.75,
+          "stability": 0.6,
           "similarity_boost": 0.85,
           "style": 0.25,
           "use_speaker_boost": false
@@ -102,7 +102,7 @@
         "voice_id": "ErXwobaYiN019PkySvjV",
         "model_id": "eleven_multilingual_v2",
         "settings": {
-          "stability": 0.50,
+          "stability": 0.20,
           "similarity_boost": 0.85,
           "style": 0.65,
           "use_speaker_boost": true
