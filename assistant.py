@@ -1,4 +1,4 @@
-# assistant.py — FINAL VERSION (JARVIS + AI EMOTION SYSTEM)
+# assistant.py — FINAL VERSION (JARVIS + AI EMOTION SYSTEM + DASHBOARD FIX)
 
 from __future__ import annotations
 
@@ -48,6 +48,11 @@ class VoiceAssistant:
         self._personality = self.personalities[self._personality_name]
 
         self._pa = pyaudio.PyAudio()
+
+    # ✅ 🔥 FIX: expose personality for dashboard
+    @property
+    def personality_name(self):
+        return self._personality_name
 
     # ── SET PERSONALITY ─────────────────────────────────────────
     def set_personality(self, name):
@@ -208,7 +213,6 @@ User input: {text}
                 if not text:
                     continue
 
-                # 🔥 JARVIS DETECTION
                 if "jarvis" not in text.lower():
                     print("[DEBUG] No 'jarvis' detected\n")
                     continue
