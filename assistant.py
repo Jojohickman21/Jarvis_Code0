@@ -1,11 +1,10 @@
-# assistant.py — FINAL VERSION (WAKE WORD + NO PYGAME)
+# assistant.py — FINAL VERSION (JARVIS DETECTION VIA SPEECH)
 
 from __future__ import annotations
 
 import json
 import os
 import tempfile
-import time
 import wave
 import subprocess
 
@@ -13,7 +12,6 @@ import numpy as np
 import pyaudio
 from dotenv import load_dotenv
 from openai import OpenAI
-from openwakeword.model import Model as OWWModel
 
 from config import (
     DEFAULT_PERSONALITY,
@@ -54,43 +52,9 @@ class VoiceAssistant:
 
         self._pa = pyaudio.PyAudio()
 
-        # 🔥 Wake word model
-        print("[INFO] Loading wake word model...")
-        self._oww = OWWModel()
-        self._threshold = 0.5
-
     # ── AUDIO OUTPUT ───────────────────────────────────────────
     def _play_audio(self, filepath):
         subprocess.run(["aplay", "-D", "plughw:2,0", filepath])
-
-    # ── WAKE WORD ──────────────────────────────────────────────
-    def listen_for_wake_word(self):
-        print("👂 Listening for wake word...")
-
-        chunk = 1024
-        stream = self._pa.open(
-            rate=16000,
-            channels=1,
-            format=pyaudio.paInt16,
-            input=True,
-            frames_per_buffer=chunk,
-        )
-
-        try:
-            while True:
-                data = stream.read(chunk, exception_on_overflow=False)
-                audio = np.frombuffer(data, dtype=np.int16)
-
-                prediction = self._oww.predict(audio)
-
-                for key, score in prediction.items():
-                    if score > self._threshold:
-                        print(f"🟢 Wake word detected: {key}")
-                        return
-
-        finally:
-            stream.stop_stream()
-            stream.close()
 
     # ── RECORD ────────────────────────────────────────────────
     def record(self):
@@ -201,19 +165,27 @@ class VoiceAssistant:
 
     # ── MAIN LOOP ─────────────────────────────────────────────
     def run(self):
-        print("🚀 JARVIS ONLINE (WAKE WORD ENABLED)")
+        print("🚀 JARVIS ONLINE (SAY 'JARVIS' TO ACTIVATE)")
 
         try:
             while True:
-                self.listen_for_wake_word()
-
                 audio = self.record()
                 text = self.transcribe(audio)
 
                 if not text:
                     continue
 
-                reply = self.think(text)
+                # 🔥 JARVIS DETECTION HERE
+                if "jarvis" not in text.lower():
+                    print("[DEBUG] No 'jarvis' detected, ignoring...\n")
+                    continue
+
+                print("🟢 'Jarvis' detected!")
+
+                # remove "jarvis" so GPT gets clean input
+                clean_text = text.lower().replace("jarvis", "").strip()
+
+                reply = self.think(clean_text)
                 self.speak(reply)
 
                 print()
