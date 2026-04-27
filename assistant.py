@@ -1,19 +1,15 @@
-# assistant.py — JARVIS Voice Assistant
+# assistant.py — JARVIS Voice Assistant (CLEAN VERSION)
 
 from __future__ import annotations
 from google_actions import GoogleActions
 
-import io
 import json
-import math
 import os
-import struct
 import tempfile
 import threading
 import time
 import wave
 import subprocess
-from pathlib import Path
 
 import numpy as np
 import pyaudio
@@ -28,124 +24,146 @@ from config import (
     SILENCE_DURATION,
     SILENCE_THRESHOLD,
     TEMP_AUDIO_PATH,
-    WAKE_WORD,
 )
 
-# ─── Load environment & API clients ────────────────────────────
+# ─── Setup ─────────────────────────────────────────────────────
 load_dotenv()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# ElevenLabs
 try:
     from elevenlabs import ElevenLabs
     elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
-except Exception:
+except:
     elevenlabs_client = None
-    print("[WARN] ElevenLabs SDK not available — TTS will fall back to pyttsx3.")
+    print("[WARN] ElevenLabs not available")
 
-# ─── Personality loader ────────────────────────────────────────
-def load_personalities(path: str = "personality.json") -> dict:
+# ─── Personality ───────────────────────────────────────────────
+def load_personalities(path="personality.json"):
     with open(path, "r") as f:
-        data = json.load(f)
-    return data.get("personality_profiles", {})
+        return json.load(f)["personality_profiles"]
 
-# ─── Voice Assistant ───────────────────────────────────────────
+# ─── Assistant ─────────────────────────────────────────────────
 class VoiceAssistant:
 
-    def __init__(self, servo_controller=None, motion_player=None, personality_name: str = DEFAULT_PERSONALITY):
+    def __init__(self):
         self.personalities = load_personalities()
-        self._personality_name = personality_name
-        self._personality = self.personalities.get(personality_name)
+        self._personality = self.personalities[DEFAULT_PERSONALITY]
 
-        if self._personality is None:
-            self._personality_name = DEFAULT_PERSONALITY
-            self._personality = self.personalities[DEFAULT_PERSONALITY]
-
-        self.conversation = []
-        self._rebuild_system_message()
-
-        self.servo_controller = servo_controller
-        self.motion_player = motion_player
-
-        try:
-            self.google = GoogleActions()
-        except Exception:
-            self.google = None
+        self.conversation = [
+            {"role": "system", "content": self._personality["system_prompt"]}
+        ]
 
         self._pa = pyaudio.PyAudio()
-        self._lock = threading.Lock()
 
-    # ── AUDIO OUTPUT (UPDATED) ─────────────────────────────────
+    # ── AUDIO OUTPUT (I2S) ─────────────────────────────────────
+    def _play_audio(self, filepath):
+        subprocess.run([
+            "aplay",
+            "-D", "plughw:2,0",
+            filepath
+        ])
 
-    def _play_audio_file(self, filepath: str):
-        """Play audio through ALSA (I2S amp)."""
-        try:
-            subprocess.run([
-                "aplay",
-                "-D", "plughw:2,0",   # change to hw:2,0 if needed
-                filepath
-            ], check=True)
-        except Exception as e:
-            print(f"[ERROR] aplay failed: {e}")
+    # ── RECORD ────────────────────────────────────────────────
+    def record(self):
+        chunk = 1024
 
-    # ── SPEAK (UPDATED) ────────────────────────────────────────
+        stream = self._pa.open(
+            rate=SAMPLE_RATE,
+            channels=1,
+            format=pyaudio.paInt16,
+            input=True,
+            frames_per_buffer=chunk,
+        )
 
-    def speak(self, text: str):
-        voice_cfg = self._personality.get("voice", {})
-        voice_id = voice_cfg.get("voice_id", "EXAVITQu4vr4xnSDxMaL")
-        model_id = voice_cfg.get("model_id", "eleven_multilingual_v2")
-        settings = voice_cfg.get("settings", {})
+        print("🎤 Listening...")
+        frames = []
+        silent = 0
 
+        for _ in range(int(SAMPLE_RATE / chunk * RECORD_SECONDS_MAX)):
+            data = stream.read(chunk, exception_on_overflow=False)
+            rms = np.sqrt(np.mean(np.frombuffer(data, dtype=np.int16) ** 2))
+
+            frames.append(data)
+
+            if rms < SILENCE_THRESHOLD:
+                silent += 1
+                if silent > int(SILENCE_DURATION * SAMPLE_RATE / chunk):
+                    break
+            else:
+                silent = 0
+
+        stream.stop_stream()
+        stream.close()
+
+        with wave.open(TEMP_AUDIO_PATH, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(self._pa.get_sample_size(pyaudio.paInt16))
+            wf.setframerate(SAMPLE_RATE)
+            wf.writeframes(b"".join(frames))
+
+        return TEMP_AUDIO_PATH
+
+    # ── TRANSCRIBE ────────────────────────────────────────────
+    def transcribe(self, path):
+        with open(path, "rb") as f:
+            result = openai_client.audio.transcriptions.create(
+                model="whisper-1",
+                file=f
+            )
+        text = result.text.strip()
+        print(f"👤 {text}")
+        return text
+
+    # ── THINK ────────────────────────────────────────────────
+    def think(self, text):
+        self.conversation.append({"role": "user", "content": text})
+
+        response = openai_client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=self.conversation
+        )
+
+        reply = response.choices[0].message.content
+        print(f"🤖 {reply}")
+
+        self.conversation.append({"role": "assistant", "content": reply})
+        return reply
+
+    # ── SPEAK ────────────────────────────────────────────────
+    def speak(self, text):
         if elevenlabs_client is None:
-            self._speak_fallback(text)
+            print(text)
             return
 
-        try:
-            audio_generator = elevenlabs_client.text_to_speech.convert(
-                voice_id=voice_id,
-                text=text,
-                model_id=model_id,
-                voice_settings={
-                    "stability": settings.get("stability", 0.5),
-                    "similarity_boost": settings.get("similarity_boost", 0.75),
-                    "style": settings.get("style", 0.5),
-                    "use_speaker_boost": settings.get("use_speaker_boost", True),
-                },
-            )
+        audio = elevenlabs_client.text_to_speech.convert(
+            voice_id="EXAVITQu4vr4xnSDxMaL",
+            text=text,
+            model_id="eleven_multilingual_v2"
+        )
 
-            audio_bytes = b"".join(audio_generator)
+        audio_bytes = b"".join(audio)
 
-            # 🔥 Save to temp WAV file
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-                tmp.write(audio_bytes)
-                tmp_path = tmp.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp.write(audio_bytes)
+            mp3_path = tmp.name
 
-            # 🔥 Convert to WAV (aplay prefers wav)
-            wav_path = tmp_path.replace(".mp3", ".wav")
-            subprocess.run([
-                "ffmpeg", "-y", "-i", tmp_path, wav_path
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        wav_path = mp3_path.replace(".mp3", ".wav")
 
-            # 🔥 Play via ALSA
-            self._play_audio_file(wav_path)
+        subprocess.run([
+            "ffmpeg", "-y", "-i", mp3_path, wav_path
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-            os.remove(tmp_path)
-            os.remove(wav_path)
+        self._play_audio(wav_path)
 
-        except Exception as exc:
-            print(f"[ERROR] ElevenLabs TTS failed: {exc}")
-            self._speak_fallback(text)
+        os.remove(mp3_path)
+        os.remove(wav_path)
 
-    # ── FALLBACK ───────────────────────────────────────────────
+    # ── MAIN LOOP ─────────────────────────────────────────────
+    def run(self):
+        print("🚀 JARVIS ONLINE")
 
-    def _speak_fallback(self, text: str):
-        try:
-            import pyttsx3
-            engine = pyttsx3.init()
-            engine.say(text)
-            engine.runAndWait()
-        except Exception:
-            print(text)
-
-    # ── KEEP EVERYTHING ELSE THE SAME ──────────────────────────
-    # (record_speech, transcribe, think, emote, run, etc.)
+        while True:
+            audio = self.record()
+            text = self.transcribe(audio)
+            reply = self.think(text)
+            self.speak(reply)
