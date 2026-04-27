@@ -174,7 +174,7 @@ class VoiceAssistant:
             return
 
         audio = elevenlabs_client.text_to_speech.convert(
-            voice_id="EXAVITQu4vr4xnSDxMaL",
+            voice_id="goT3UYdM9bhm0n2lmKQx",
             text=text,
             model_id="eleven_multilingual_v2"
         )
