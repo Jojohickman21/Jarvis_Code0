@@ -49,11 +49,7 @@ def main():
     # ── Launch voice assistant ────────────────────────────────
     from assistant import VoiceAssistant
 
-    assistant = VoiceAssistant(
-        servo_controller=servos,
-        motion_player=motion_player,
-        personality_name=DEFAULT_PERSONALITY,
-    )
+    assistant = VoiceAssistant()
 
     # ── Launch web dashboard in background ────────────────────
     try:
