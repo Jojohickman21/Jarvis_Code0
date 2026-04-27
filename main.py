@@ -6,6 +6,8 @@
 import threading
 import time
 
+from security_mode import SecuritySentry
+
 from config import (
     DEFAULT_PERSONALITY,
     SERVO_CHANNELS,
@@ -19,7 +21,6 @@ try:
     from servo_controller import ServoController
     from calibration import CalibrationManager
     from motion_player import MotionPlayer
-    from security_mode import SecuritySentry
 
     HAS_SERVOS = True
 except ImportError:
