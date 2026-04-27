@@ -1,4 +1,4 @@
-# assistant.py — FINAL VERSION (JARVIS DETECTION VIA SPEECH)
+# assistant.py — FINAL VERSION (JARVIS + AI EMOTION SYSTEM)
 
 from __future__ import annotations
 
@@ -44,13 +44,18 @@ class VoiceAssistant:
 
     def __init__(self):
         self.personalities = load_personalities()
-        self._personality = self.personalities[DEFAULT_PERSONALITY]
-
-        self.conversation = [
-            {"role": "system", "content": self._personality["system_prompt"]}
-        ]
+        self._personality_name = DEFAULT_PERSONALITY
+        self._personality = self.personalities[self._personality_name]
 
         self._pa = pyaudio.PyAudio()
+
+    # ── SET PERSONALITY ─────────────────────────────────────────
+    def set_personality(self, name):
+        if name in self.personalities:
+            if name != self._personality_name:
+                print(f"[INFO] Switching personality → {name}")
+            self._personality_name = name
+            self._personality = self.personalities[name]
 
     # ── AUDIO OUTPUT ───────────────────────────────────────────
     def _play_audio(self, filepath):
@@ -113,35 +118,63 @@ class VoiceAssistant:
             print(f"[ERROR] Transcription failed: {e}")
             return None
 
-    # ── THINK ────────────────────────────────────────────────
+    # ── THINK (AI EMOTION SYSTEM) ─────────────────────────────
     def think(self, text):
         try:
-            self.conversation.append({"role": "user", "content": text})
-
             response = openai_client.chat.completions.create(
                 model=OPENAI_MODEL,
-                messages=self.conversation
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"""
+You are an AI that MUST respond in JSON format ONLY.
+
+Choose the most appropriate emotion for the response from:
+- happy_excited
+- angry
+- scared
+- sad_tired
+- disgusted
+
+Return JSON in this exact format:
+{{
+  "emotion": "...",
+  "response": "..."
+}}
+
+User input: {text}
+"""
+                    }
+                ]
             )
 
-            reply = response.choices[0].message.content.strip()
-            print(f"🤖 {reply}")
+            content = response.choices[0].message.content.strip()
+            data = json.loads(content)
 
-            self.conversation.append({"role": "assistant", "content": reply})
-            return reply
+            emotion = data.get("emotion", DEFAULT_PERSONALITY)
+            reply = data.get("response", "Something went wrong.")
+
+            print(f"🤖 [{emotion}] {reply}")
+
+            return emotion, reply
+
         except Exception as e:
             print(f"[ERROR] GPT failed: {e}")
-            return "Something went wrong."
+            return DEFAULT_PERSONALITY, "Something went wrong."
 
-    # ── SPEAK ────────────────────────────────────────────────
+    # ── SPEAK (PERSONALITY VOICE) ─────────────────────────────
     def speak(self, text):
         if elevenlabs_client is None:
             print(text)
             return
 
+        voice_cfg = self._personality.get("voice", {})
+
         audio = elevenlabs_client.text_to_speech.convert(
-            voice_id="goT3UYdM9bhm0n2lmKQx",
+            voice_id=voice_cfg.get("voice_id"),
             text=text,
-            model_id="eleven_multilingual_v2"
+            model_id=voice_cfg.get("model_id"),
+            voice_settings=voice_cfg.get("settings"),
         )
 
         audio_bytes = b"".join(audio)
@@ -165,7 +198,7 @@ class VoiceAssistant:
 
     # ── MAIN LOOP ─────────────────────────────────────────────
     def run(self):
-        print("🚀 JARVIS ONLINE (SAY 'JARVIS' TO ACTIVATE)")
+        print("🚀 JARVIS ONLINE (AI EMOTION ENABLED)")
 
         try:
             while True:
@@ -175,17 +208,18 @@ class VoiceAssistant:
                 if not text:
                     continue
 
-                # 🔥 JARVIS DETECTION HERE
+                # 🔥 JARVIS DETECTION
                 if "jarvis" not in text.lower():
-                    print("[DEBUG] No 'jarvis' detected, ignoring...\n")
+                    print("[DEBUG] No 'jarvis' detected\n")
                     continue
 
-                print("🟢 'Jarvis' detected!")
+                print("🟢 Jarvis detected!")
 
-                # remove "jarvis" so GPT gets clean input
                 clean_text = text.lower().replace("jarvis", "").strip()
 
-                reply = self.think(clean_text)
+                emotion, reply = self.think(clean_text)
+
+                self.set_personality(emotion)
                 self.speak(reply)
 
                 print()
