@@ -1,4 +1,4 @@
-# assistant.py — FINAL VERSION (PARALLEL MOTION + VOICE)
+# assistant.py — FINAL VERSION (SYNCED MOTION + SPEECH)
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import tempfile
 import wave
 import subprocess
 import time
-import threading  # 🔥 NEW
+import threading
 
 import numpy as np
 import pyaudio
@@ -68,9 +68,41 @@ class VoiceAssistant:
         self.listening_enabled = enabled
         print(f"[INFO] Listening {'ON' if enabled else 'OFF'}")
 
+    # ─────────────────────────────────────────────
     def _play_audio(self, filepath):
         subprocess.Popen(["aplay", "-D", AUDIO_OUTPUT_DEVICE, filepath])
 
+    # ─────────────────────────────────────────────
+    def _generate_audio(self, text):
+        if elevenlabs_client is None:
+            return None
+
+        voice_cfg = self._personality.get("voice", {})
+
+        audio = elevenlabs_client.text_to_speech.convert(
+            voice_id=voice_cfg.get("voice_id"),
+            text=text,
+            model_id=voice_cfg.get("model_id"),
+            voice_settings=voice_cfg.get("settings"),
+        )
+
+        audio_bytes = b"".join(audio)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp.write(audio_bytes)
+            mp3_path = tmp.name
+
+        wav_path = mp3_path.replace(".mp3", ".wav")
+
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", mp3_path, wav_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        return wav_path
+
+    # ─────────────────────────────────────────────
     def record(self):
         chunk = 1024
 
@@ -112,6 +144,7 @@ class VoiceAssistant:
 
         return TEMP_AUDIO_PATH
 
+    # ─────────────────────────────────────────────
     def transcribe(self, path):
         try:
             with open(path, "rb") as f:
@@ -126,6 +159,7 @@ class VoiceAssistant:
             print(f"[ERROR] Transcription failed: {e}")
             return None
 
+    # ─────────────────────────────────────────────
     def think(self, text):
         try:
             response = openai_client.chat.completions.create(
@@ -155,36 +189,7 @@ User: {text}
             print(f"[ERROR] GPT failed: {e}")
             return DEFAULT_PERSONALITY, "Error."
 
-    def speak(self, text):
-        if elevenlabs_client is None:
-            print(text)
-            return
-
-        voice_cfg = self._personality.get("voice", {})
-
-        audio = elevenlabs_client.text_to_speech.convert(
-            voice_id=voice_cfg.get("voice_id"),
-            text=text,
-            model_id=voice_cfg.get("model_id"),
-            voice_settings=voice_cfg.get("settings"),
-        )
-
-        audio_bytes = b"".join(audio)
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-            tmp.write(audio_bytes)
-            mp3_path = tmp.name
-
-        wav_path = mp3_path.replace(".mp3", ".wav")
-
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", mp3_path, wav_path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-
-        self._play_audio(wav_path)
-
+    # ─────────────────────────────────────────────
     def run(self):
         print("🚀 JARVIS ONLINE")
 
@@ -213,19 +218,28 @@ User: {text}
                 emotion, reply = self.think(clean_text)
                 self.set_personality(emotion)
 
-                # 🔥 PARALLEL EXECUTION
+                # 🔥 Generate audio FIRST
+                audio_path = self._generate_audio(reply)
+
                 threads = []
 
+                # 🔥 motion + audio start together
                 if self.motion_player:
-                    t_motion = threading.Thread(target=self.motion_player.play, args=(emotion,))
+                    t_motion = threading.Thread(
+                        target=self.motion_player.play,
+                        args=(emotion,)
+                    )
                     threads.append(t_motion)
                     t_motion.start()
 
-                t_speech = threading.Thread(target=self.speak, args=(reply,))
-                threads.append(t_speech)
-                t_speech.start()
+                if audio_path:
+                    t_audio = threading.Thread(
+                        target=self._play_audio,
+                        args=(audio_path,)
+                    )
+                    threads.append(t_audio)
+                    t_audio.start()
 
-                # wait for both
                 for t in threads:
                     t.join()
 
