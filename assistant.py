@@ -1,4 +1,4 @@
-# assistant.py — FINAL VERSION (JARVIS + AI EMOTION + TOGGLE)
+# assistant.py — FINAL VERSION (JARVIS + AI EMOTION + MOTION + TOGGLE)
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from config import (
     SILENCE_DURATION,
     SILENCE_THRESHOLD,
     TEMP_AUDIO_PATH,
+    AUDIO_OUTPUT_DEVICE,   # 🔥 FIXED IMPORT
 )
 
 load_dotenv()
@@ -42,16 +43,20 @@ def load_personalities(path="personality.json"):
 
 class VoiceAssistant:
 
-    def __init__(self):
+    def __init__(self, motion_player=None):
         self.personalities = load_personalities()
         self._personality_name = DEFAULT_PERSONALITY
         self._personality = self.personalities[self._personality_name]
 
         self._pa = pyaudio.PyAudio()
 
-        # 🔥 NEW: listening toggle
+        # 🔥 toggle state
         self.listening_enabled = True
 
+        # 🔥 motion system
+        self.motion_player = motion_player
+
+    # ─────────────────────────────────────────────
     @property
     def personality_name(self):
         return self._personality_name
@@ -63,14 +68,16 @@ class VoiceAssistant:
             self._personality_name = name
             self._personality = self.personalities[name]
 
-    # 🔥 NEW: toggle control
+    # ─────────────────────────────────────────────
     def set_listening(self, enabled: bool):
         self.listening_enabled = enabled
         print(f"[INFO] Listening {'ON' if enabled else 'OFF'}")
 
+    # ─────────────────────────────────────────────
     def _play_audio(self, filepath):
         subprocess.Popen(["aplay", "-D", AUDIO_OUTPUT_DEVICE, filepath])
 
+    # ─────────────────────────────────────────────
     def record(self):
         chunk = 1024
 
@@ -112,6 +119,7 @@ class VoiceAssistant:
 
         return TEMP_AUDIO_PATH
 
+    # ─────────────────────────────────────────────
     def transcribe(self, path):
         try:
             with open(path, "rb") as f:
@@ -126,6 +134,7 @@ class VoiceAssistant:
             print(f"[ERROR] Transcription failed: {e}")
             return None
 
+    # ─────────────────────────────────────────────
     def think(self, text):
         try:
             response = openai_client.chat.completions.create(
@@ -134,12 +143,12 @@ class VoiceAssistant:
                     {
                         "role": "system",
                         "content": f"""
-You are an AI that MUST respond in JSON format ONLY.
+You must respond ONLY in JSON.
 
 Choose emotion from:
 happy_excited, angry, scared, sad_tired, disgusted
 
-Return JSON:
+Return:
 {{ "emotion": "...", "response": "..." }}
 
 User input: {text}
@@ -159,6 +168,7 @@ User input: {text}
             print(f"[ERROR] GPT failed: {e}")
             return DEFAULT_PERSONALITY, "Error."
 
+    # ─────────────────────────────────────────────
     def speak(self, text):
         if elevenlabs_client is None:
             print(text)
@@ -189,13 +199,14 @@ User input: {text}
 
         self._play_audio(wav_path)
 
+    # ─────────────────────────────────────────────
     def run(self):
         print("🚀 JARVIS ONLINE")
 
         try:
             while True:
 
-                # 🔥 KEY CHANGE
+                # 🔥 FIXED: clear state when OFF
                 if not self.listening_enabled:
                     print("[DEBUG] Listening OFF")
                     time.sleep(0.5)
@@ -211,10 +222,20 @@ User input: {text}
                     print("[DEBUG] No 'jarvis'")
                     continue
 
+                print("🟢 Jarvis detected!")
+
                 clean_text = text.lower().replace("jarvis", "").strip()
 
                 emotion, reply = self.think(clean_text)
+
+                # 🔥 SET personality
                 self.set_personality(emotion)
+
+                # 🔥 TRIGGER MOTION (THIS WAS MISSING)
+                if self.motion_player:
+                    self.motion_player.play(emotion)
+
+                # 🔥 SPEAK
                 self.speak(reply)
 
         except KeyboardInterrupt:
