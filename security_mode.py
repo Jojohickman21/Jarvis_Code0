@@ -3,7 +3,7 @@ import time
 import threading
 import subprocess
 
-from config import SERVO_CHANNELS, CAMERA_INDEX, AUDIO_OUTPUT_DEVICE, ALARM_SOUND_PATH
+from config import SERVO_CHANNELS, CAMERA_INDEX, AUDIO_OUTPUT_DEVICE
 
 
 class SecuritySentry:
@@ -46,56 +46,95 @@ class SecuritySentry:
         return "ALARM" if self.alarm_process else ("ARMED" if self.running else "DISARMED")
 
     # ─────────────────────────────
+    # CORE LOOP (FIXED — keeps scanning)
+    # ─────────────────────────────
     def _run(self):
         time.sleep(2)
 
         cap = cv2.VideoCapture(CAMERA_INDEX)
 
+        frame_count = 0
+        angles = list(range(60, 120, 10)) + list(range(120, 60, -10))
+
         while self.running:
-            ret, frame = cap.read()
-            if not ret:
-                continue
+            for angle in angles:
+                if not self.running:
+                    break
 
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                # ✅ KEEP HEAD SCANNING (FIXED)
+                self.servo_controller.set_angle(
+                    SERVO_CHANNELS["neck_yaw"], angle
+                )
 
-            faces = self.face_cascade.detectMultiScale(
-                gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30)
-            )
+                time.sleep(0.4)
 
-            if len(faces) > 0:
-                print("[SECURITY] HUMAN DETECTED")
+                ret, frame = cap.read()
+                if not ret:
+                    continue
 
-                self._start_alarm()
-                self._alarm_loop()
+                frame_count += 1
+                if frame_count % 3 != 0:
+                    continue
+
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+                faces = self.face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=4,
+                    minSize=(30, 30),
+                )
+
+                if len(faces) > 0:
+                    print("[SECURITY] HUMAN DETECTED")
+
+                    self._start_alarm()
+
+                    # 🔥 run alarm behavior WITHOUT killing scanning loop
+                    self._alarm_burst()
 
         cap.release()
 
+    # ─────────────────────────────
+    # ALARM AUDIO (FIXED — no bash loop)
     # ─────────────────────────────
     def _start_alarm(self):
         if self.alarm_process is None:
             print("[SECURITY] STARTING ALARM AUDIO")
 
-            # 🔥 simple + reliable playback
             self.alarm_process = subprocess.Popen([
-                "aplay",
-                "-D", AUDIO_OUTPUT_DEVICE,
-                ALARM_SOUND_PATH
+                "mpg123",
+                "-a", AUDIO_OUTPUT_DEVICE,
+                "-f", "8000",  # 🔥 volume boost
+                "--loop", "-1",
+                "/home/luca/Jarvis_Code0/alarm.mp3"  # ✅ YOUR ORIGINAL PATH
             ])
 
     # ─────────────────────────────
-    def _alarm_loop(self):
-        print("[SECURITY] ALARM LOOP ACTIVE")
+    # ANGRY MOTION BURST (non-blocking scanning)
+    # ─────────────────────────────
+    def _alarm_burst(self):
+        print("[SECURITY] ALARM BURST")
 
-        while self.running:
+        # run a few cycles instead of infinite loop
+        for _ in range(3):
+            if not self.running:
+                break
 
-            # 🔊 restart sound if finished
-            if self.alarm_process and self.alarm_process.poll() is not None:
-                self.alarm_process = None
-                self._start_alarm()
-
-            # 🔥 FORCE ANGRY MOTION
             if self.motion_player:
-                print("[DEBUG] PLAYING ANGRY MOTION")
                 self.motion_player.play("angry")
+            else:
+                # fallback
+                self.servo_controller.set_pose({
+                    SERVO_CHANNELS["left_arm"]: 50,
+                    SERVO_CHANNELS["right_arm"]: 50,
+                    SERVO_CHANNELS["neck_yaw"]: 70,
+                })
+                time.sleep(0.07)
 
-            time.sleep(0.1)
+                self.servo_controller.set_pose({
+                    SERVO_CHANNELS["left_arm"]: 130,
+                    SERVO_CHANNELS["right_arm"]: 130,
+                    SERVO_CHANNELS["neck_yaw"]: 110,
+                })
+                time.sleep(0.07)
