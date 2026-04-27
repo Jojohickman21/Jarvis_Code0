@@ -65,7 +65,7 @@ class VoiceAssistant:
 
     # ── WAKE WORD ──────────────────────────────────────────────
     def listen_for_wake_word(self):
-        print("👂 Listening for 'Jarvis'...")
+        print("👂 Listening for wake word...")
 
         chunk = 1024
         stream = self._pa.open(
@@ -83,9 +83,10 @@ class VoiceAssistant:
 
                 prediction = self._oww.predict(audio)
 
-                if "jarvis" in prediction and prediction["jarvis"] > self._threshold:
-                    print("🟢 Wake word detected!")
-                    break
+                for key, score in prediction.items():
+                    if score > self._threshold:
+                        print(f"🟢 Wake word detected: {key}")
+                        return
 
         finally:
             stream.stop_stream()
