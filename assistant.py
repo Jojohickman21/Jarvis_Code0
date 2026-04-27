@@ -166,7 +166,7 @@ Return ONLY JSON:
 {{ "emotion": "...", "response": "..." }}
 
 Emotions:
-happy_excited, angry, scared, sad_tired, disgusted
+happy_excited, angry, scared, sad_tired, disgusted, rizz
 
 User: {text}
 """
