@@ -1,4 +1,4 @@
-# calibration.py
+# calibration.py — INTERACTIVE SERVO CALIBRATION
 
 import time
 
@@ -10,6 +10,8 @@ class CalibrationManager:
         self.neutral_angles = neutral_angles
         self.offsets = offsets
         self.servo_limits = servo_limits or {}
+
+    # ── CORE HELPERS ───────────────────────────────────────────
 
     def clamp_angle(self, name: str, angle: float) -> float:
         if name in self.servo_limits:
@@ -28,30 +30,98 @@ class CalibrationManager:
         return pose
 
     def move_to_neutral(self, pause: float = 1.0):
+        print("\n[INFO] Moving to neutral pose...")
         pose = self.get_neutral_pose()
         self.servo_controller.safe_neutral(pose)
         time.sleep(pause)
 
-    def sweep_servo(self, channel, low=30, high=150, step=5, delay=0.05):
-        for angle in range(low, high + 1, step):
-            self.servo_controller.set_angle(channel, angle)
-            time.sleep(delay)
+    # ── MANUAL CALIBRATION MODE ────────────────────────────────
 
-        for angle in range(high, low - 1, -step):
-            self.servo_controller.set_angle(channel, angle)
-            time.sleep(delay)
+    def manual_calibrate(self):
+        print("\n===== SERVO CALIBRATION MODE =====")
+        print("Commands:")
+        print("  list       → show servos")
+        print("  select X   → choose servo")
+        print("  angle N    → move to angle")
+        print("  center     → go to neutral")
+        print("  step +N    → move up")
+        print("  step -N    → move down")
+        print("  limits     → print limits")
+        print("  done       → exit\n")
 
-    def test_all_servos(self, sweep_ranges=None, delay=0.05):
-        sweep_ranges = sweep_ranges or {}
+        current_servo = None
+        current_angle = 90
 
-        for name, channel in self.servo_channels.items():
-            low, high = sweep_ranges.get(name, self.servo_limits.get(name, (30, 150)))
-            print(f"Testing {name} on channel {channel}: {low} -> {high}")
-            self.sweep_servo(channel, low=low, high=high, step=5, delay=delay)
-            self.move_to_neutral(pause=0.5)
+        while True:
+            cmd = input(">> ").strip().lower()
 
-    def print_neutral_pose(self):
-        pose = self.get_neutral_pose()
-        print("Neutral pose:")
-        for channel, angle in pose.items():
-            print(f"  channel {channel}: {angle}")
+            # list servos
+            if cmd == "list":
+                print(self.servo_channels)
+
+            # select servo
+            elif cmd.startswith("select"):
+                name = cmd.split(" ")[1]
+                if name in self.servo_channels:
+                    current_servo = name
+                    current_angle = self.neutral_angles[name]
+                    print(f"[INFO] Selected: {name}")
+                    self.move_servo(name, current_angle)
+                else:
+                    print("Invalid servo")
+
+            # absolute angle
+            elif cmd.startswith("angle"):
+                if not current_servo:
+                    print("Select a servo first")
+                    continue
+
+                try:
+                    angle = int(cmd.split(" ")[1])
+                    current_angle = angle
+                    self.move_servo(current_servo, current_angle)
+                except:
+                    print("Invalid angle")
+
+            # step movement
+            elif cmd.startswith("step"):
+                if not current_servo:
+                    print("Select a servo first")
+                    continue
+
+                try:
+                    delta = int(cmd.split(" ")[1])
+                    current_angle += delta
+                    self.move_servo(current_servo, current_angle)
+                except:
+                    print("Invalid step")
+
+            # center
+            elif cmd == "center":
+                if not current_servo:
+                    print("Select a servo first")
+                    continue
+
+                current_angle = self.neutral_angles[current_servo]
+                self.move_servo(current_servo, current_angle)
+
+            # show limits
+            elif cmd == "limits":
+                print(self.servo_limits)
+
+            # exit
+            elif cmd == "done":
+                print("\n[INFO] Calibration complete.")
+                break
+
+            else:
+                print("Unknown command")
+
+    # ── LOW LEVEL MOVE ─────────────────────────────────────────
+
+    def move_servo(self, name, angle):
+        channel = self.servo_channels[name]
+        angle = self.clamp_angle(name, angle)
+
+        print(f"[MOVE] {name} → {angle}")
+        self.servo_controller.set_angle(channel, angle)
