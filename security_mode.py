@@ -3,7 +3,7 @@ import time
 import threading
 import subprocess
 
-from config import SERVO_CHANNELS, CAMERA_INDEX, AUDIO_OUTPUT_DEVICE
+from config import SERVO_CHANNELS, CAMERA_INDEX, AUDIO_OUTPUT_DEVICE, ALARM_SOUND_PATH
 
 
 class SecuritySentry:
@@ -103,11 +103,9 @@ class SecuritySentry:
             print("[SECURITY] STARTING ALARM AUDIO")
 
             self.alarm_process = subprocess.Popen([
-                "mpg123",
-                "-a", AUDIO_OUTPUT_DEVICE,
-                "-f", "8000",  # 🔥 volume boost
-                "--loop", "-1",
-                "/home/luca/Jarvis_Code0/alarm.mp3"  # ✅ YOUR ORIGINAL PATH
+                "aplay",
+                "-D", AUDIO_OUTPUT_DEVICE,
+                ALARM_SOUND_PATH
             ])
 
     # ─────────────────────────────
@@ -116,15 +114,18 @@ class SecuritySentry:
     def _alarm_burst(self):
         print("[SECURITY] ALARM BURST")
 
-        # run a few cycles instead of infinite loop
         for _ in range(3):
             if not self.running:
                 break
 
+            # 🔊 restart sound if it ended
+            if self.alarm_process and self.alarm_process.poll() is not None:
+                self.alarm_process = None
+                self._start_alarm()
+
             if self.motion_player:
                 self.motion_player.play("angry")
             else:
-                # fallback
                 self.servo_controller.set_pose({
                     SERVO_CHANNELS["left_arm"]: 50,
                     SERVO_CHANNELS["right_arm"]: 50,

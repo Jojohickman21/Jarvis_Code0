@@ -30,7 +30,7 @@ SERVO_LIMITS = {
 
 CAMERA_INDEX = 0
 
-ALARM_SOUND_PATH = "/home/luca/robot_assets/alarm.mp3"
+ALARM_SOUND_PATH = "/home/luca/Jarvis_Code0/alarm.wav"
 SECURITY_PASSWORD = "1234"
 
 SENTRY_ARM_DELAY = 10
