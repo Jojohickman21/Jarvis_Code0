@@ -8,10 +8,10 @@ SERVO_CHANNELS = {
 }
 
 NEUTRAL_ANGLES = {
-    "neck_yaw": 90,
-    "head_pitch": 90,
-    "left_arm": 90,
-    "right_arm": 90,
+    "neck_yaw": 95,
+    "head_pitch": 63,
+    "left_arm": 20,
+    "right_arm": 20,
 }
 
 SERVO_OFFSETS = {
