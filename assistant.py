@@ -69,7 +69,7 @@ class VoiceAssistant:
         print(f"[INFO] Listening {'ON' if enabled else 'OFF'}")
 
     def _play_audio(self, filepath):
-        subprocess.Popen(["aplay", "-D", "plughw:2,0", filepath])
+        subprocess.Popen(["aplay", "-D", AUDIO_OUTPUT_DEVICE, filepath])
 
     def record(self):
         chunk = 1024
