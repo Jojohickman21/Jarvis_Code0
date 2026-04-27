@@ -19,6 +19,7 @@ try:
     from servo_controller import ServoController
     from calibration import CalibrationManager
     from motion_player import MotionPlayer
+    from security_mode import SecuritySentry
 
     HAS_SERVOS = True
 except ImportError:
