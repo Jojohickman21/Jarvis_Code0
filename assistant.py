@@ -56,7 +56,7 @@ class VoiceAssistant:
 
         # 🔥 Wake word model
         print("[INFO] Loading wake word model...")
-        self._oww = OWWModel(wakeword_models=["jarvis"])
+        self._oww = OWWModel()
         self._threshold = 0.5
 
     # ── AUDIO OUTPUT ───────────────────────────────────────────
