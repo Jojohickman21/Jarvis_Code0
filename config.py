@@ -3,8 +3,8 @@
 SERVO_CHANNELS = {
     "neck_yaw": 0,      # left/right
     "head_pitch": 1,    # up/down
-    "left_arm": 2,
-    "right_arm": 3,
+    "left_arm": 3,
+    "right_arm": 2,
 }
 
 NEUTRAL_ANGLES = {
@@ -24,8 +24,8 @@ SERVO_OFFSETS = {
 SERVO_LIMITS = {
     "neck_yaw": (0, 180),
     "head_pitch": (30, 150),
-    "left_arm": (20, 160),
-    "right_arm": (20, 160),
+    "left_arm": (30, 180),
+    "right_arm": (20, 180),
 }
 
 CAMERA_INDEX = 0
