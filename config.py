@@ -43,9 +43,9 @@ ALARM_SWING_DELAY = 0.06
 
 # ─── Voice Assistant ────────────────────────────────────────────
 WAKE_WORD = "jarvis"              # built-in Porcupine keyword (free)
-RECORD_SECONDS_MAX = 3           # max recording length after wake word
+RECORD_SECONDS_MAX = 4           # max recording length after wake word
 SILENCE_THRESHOLD = 500           # RMS energy below this = silence
-SILENCE_DURATION = 0.5            # seconds of silence to stop recording
+SILENCE_DURATION = 0.8            # seconds of silence to stop recording
 SAMPLE_RATE = 48000              # 16kHz — required by Porcupine & Whisper
 OPENAI_MODEL = "gpt-4o-mini"     # fast, cheap, great for conversation
 DEFAULT_PERSONALITY = "happy_excited"
