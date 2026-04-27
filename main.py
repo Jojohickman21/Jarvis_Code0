@@ -50,6 +50,7 @@ def main():
     from assistant import VoiceAssistant
 
     assistant = VoiceAssistant(motion_player=motion_player)
+    sentry = SecuritySentry(servo_controller, motion_player)
 
     # ── Launch web dashboard in background ────────────────────
     try:
