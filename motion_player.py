@@ -45,7 +45,7 @@ class MotionPlayer:
         for _ in range(4):
             self._set_pose({
                 "head_pitch": -5,
-                "left_arm": +170,   # full up
+                "left_arm": +180,   # full up
                 "right_arm": 0,
             })
             time.sleep(0.12)
@@ -65,8 +65,8 @@ class MotionPlayer:
             self._set_pose({
                 "neck_yaw": -20,
                 "head_pitch": +30,
-                "left_arm": +170,
-                "right_arm": +170,
+                "left_arm": +180,
+                "right_arm": +180,
             })
             time.sleep(0.06)
 
