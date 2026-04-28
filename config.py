@@ -51,12 +51,12 @@ OPENAI_MODEL = "gpt-4o-mini"     # fast, cheap, great for conversation
 DEFAULT_PERSONALITY = "happy_excited"
 TEMP_AUDIO_PATH = "/tmp/jarvis_recording.wav"
 
-# AUDIO / CAMERA CONFIG
-# Speaker (USB audio device)
-AUDIO_OUTPUT_DEVICE = "plughw:3,0"
 
-# Microphone (use webcam mic — better quality usually)
-AUDIO_INPUT_DEVICE = "plughw:2,0"
+# AUDIO / CAMERA CONFIG
+# Speaker (MAX98357A I2S amp)
+AUDIO_OUTPUT_DEVICE = "plughw:CARD=MAX98357A,DEV=0"
+# Microphone (webcam mic — keep this named if possible)
+AUDIO_INPUT_DEVICE = "plughw:CARD=Pro,DEV=0"
 
 # Webcam
 CAMERA_INDEX = 0
