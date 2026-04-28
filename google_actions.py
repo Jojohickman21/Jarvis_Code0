@@ -65,7 +65,7 @@ class GoogleActions:
             self.token_file.write_text(creds.to_json())
 
         self._creds = creds
-
+        
     @property
     def calendar(self):
         if self._calendar_service is None:

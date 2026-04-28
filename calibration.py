@@ -125,3 +125,4 @@ class CalibrationManager:
 
         print(f"[MOVE] {name} → {angle}")
         self.servo_controller.set_angle(channel, angle)
+
