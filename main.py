@@ -1,4 +1,4 @@
-# main.py — FINAL CLEAN VERSION
+# main.py — JARVIS entry point
 
 import threading
 
@@ -10,7 +10,7 @@ from config import (
     SERVO_LIMITS,
 )
 
-# ── Hardware imports ─────────────────────────────
+# ── Hardware imports ─────────────────────────────────────────────────────────
 try:
     from servo_controller import ServoController
     from calibration import CalibrationManager
@@ -22,13 +22,30 @@ except ImportError:
     HAS_SERVOS = False
     print("[WARN] Servo hardware not available — running in voice-only mode.")
 
+# ── Google integrations ──────────────────────────────────────────────────────
+try:
+    from google_actions import GoogleActions
+
+    google_actions = GoogleActions(
+        credentials_file="credentials.json",
+        token_file="token.json",
+        timezone="America/Los_Angeles",
+    )
+    print("[INFO] Google integrations loaded (Gmail + Calendar + Timers)")
+except FileNotFoundError as e:
+    google_actions = None
+    print(f"[WARN] Google integrations disabled: {e}")
+except Exception as e:
+    google_actions = None
+    print(f"[WARN] Google integrations failed to initialise: {e}")
+
 
 def main():
     servos = None
     motion_player = None
     sentry = None
 
-    # ── Setup hardware ───────────────────────────
+    # ── Setup hardware ───────────────────────────────────────────────────────
     if HAS_SERVOS:
         servos = ServoController(channels=16)
 
@@ -46,14 +63,13 @@ def main():
         calibration.move_to_neutral()
         print("Calibration complete.")
 
-        # 🔥 Security system now correctly wired
         sentry = SecuritySentry(servos, motion_player)
 
-    # ── Assistant ────────────────────────────────
+    # ── Assistant ────────────────────────────────────────────────────────────
     from assistant import VoiceAssistant
-    assistant = VoiceAssistant(motion_player=motion_player)
+    assistant = VoiceAssistant(motion_player=motion_player, google_actions=google_actions)
 
-    # ── Dashboard ────────────────────────────────
+    # ── Dashboard ────────────────────────────────────────────────────────────
     try:
         from robot_dashboard import create_app
 
@@ -68,13 +84,12 @@ def main():
             daemon=True,
         )
         dashboard_thread.start()
-
         print("[INFO] Dashboard running at http://0.0.0.0:5000")
 
     except Exception as exc:
         print(f"[WARN] Dashboard failed to start: {exc}")
 
-    # ── Run assistant (main loop) ────────────────
+    # ── Run assistant (main loop) ────────────────────────────────────────────
     assistant.run()
 
 
